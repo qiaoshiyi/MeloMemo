@@ -1,60 +1,87 @@
 ---
-// 页面主文件：结构和排版在这里，内容全部来自 src/data/content.js
+// MeloMemo · 互动音乐社区主页
+// 排版与交互在这里，内容全部来自 src/data/content.js
 import Content from '../data/content.js';
 import '../styles/global.css';
 
 const songs = Content.songs ?? [];
 const videos = Content.videos ?? [];
 const projects = Content.projects ?? [];
+const tags = Content.tags ?? [];
+const cm = Content.comments ?? {};
 const c = Content.contact ?? {};
+const discussionsUrl = cm.repo ? `https://github.com/${cm.repo}/discussions` : "";
+const giscusOn = Boolean(cm.repoId && cm.categoryId);
 
-// 导航只显示非空区块
 const links = [
   { href: '#about', label: '关于我' },
-  songs.length > 0 && { href: '#songs', label: '歌曲' },
+  songs.length > 0 && { href: '#songs', label: '歌声' },
   videos.length > 0 && { href: '#videos', label: '视频' },
   projects.length > 0 && { href: '#projects', label: '作品' },
-  Object.values(c).some(v => v) && { href: '#contact', label: '联系我' },
+  { href: '#comments', label: '留言板' },
 ].filter(Boolean);
 ---
 
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{Content.name} · 个人主页</title>
+    <title>{Content.name} · MeloMemo 音乐小屋</title>
     <meta name="description" content={Content.slogan} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta property="og:title" content={`${Content.name} · 个人主页`} />
+    <meta property="og:title" content={`${Content.name} · MeloMemo 音乐小屋`} />
     <meta property="og:description" content={Content.slogan} />
     <meta property="og:type" content="website" />
     {Content.avatar && <meta property="og:image" content={Content.avatar} />}
+    <script is:inline>
+      // 进入页面前先应用保存的主题，避免闪色
+      try {
+        var saved = localStorage.getItem('mm-theme');
+        if (saved) document.documentElement.dataset.theme = saved;
+      } catch (e) {}
+    </script>
   </head>
-  <body>
+  <body data-slogan={Content.slogan}>
+    <div id="progress"></div>
+
     <nav>
       <div class="wrap">
-        <a class="logo" href="#top">🏡 {Content.name}</a>
+        <a class="logo" href="#top">🎶 MeloMemo</a>
         {links.map(l => <a class="item" href={l.href}>{l.label}</a>)}
+        <button id="themeBtn" title="切换明暗主题">🌙</button>
       </div>
     </nav>
 
     <header class="hero" id="top">
+      <span class="float-note" style="left:12%; top:22%;">🎵</span>
+      <span class="float-note" style="left:22%; top:58%; animation-delay:-2.2s;">🎶</span>
+      <span class="float-note" style="left:74%; top:26%; animation-delay:-4s;">🎵</span>
+      <span class="float-note" style="left:86%; top:60%; animation-delay:-5.5s;">🎶</span>
       <div class="wrap">
         {Content.avatar && <img class="avatar" src={Content.avatar} alt="头像" />}
         <h1>{Content.name}</h1>
-        <p>{Content.slogan}</p>
+        <p class="slogan"><span id="typed"></span><span class="caret"></span></p>
+        <div class="cta">
+          <a class="btn primary" href="#songs">🎧 来听我唱歌</a>
+          <a class="btn ghost" href="#comments">💬 交个朋友</a>
+        </div>
       </div>
     </header>
 
     <main class="wrap">
-      <section id="about">
-        <h2>👋 关于我</h2>
+      <section id="about" class="reveal">
+        <h2>👋 关于<span class="hl">我</span></h2>
         <p class="about-text">{Content.about}</p>
+        {tags.length > 0 && (
+          <div class="tagwall">
+            {tags.map(t => <span>{t}</span>)}
+          </div>
+        )}
       </section>
 
-      <section id="songs">
-        <h2>🎵 我的歌声</h2>
+      <section id="songs" class="reveal">
+        <h2>🎵 我的<span class="hl">歌声</span></h2>
         {songs.length === 0
           ? <div class="empty">还没有歌曲。把 MP3 放进 public/media/ 文件夹，再到 src/data/content.js 里加一行就能显示在这里。</div>
           : (
@@ -62,9 +89,14 @@ const links = [
               {songs.map(s => (
                 <div class="card">
                   <div class="cover">
-                    {s.cover ? <img src={s.cover} alt={s.title} /> : <span>🎧</span>}
+                    {s.cover ? <img src={s.cover} alt={s.title} /> : <span>🎤</span>}
+                    <span class="hole"></span>
                   </div>
-                  <h3>{s.title}</h3>
+                  <div class="row">
+                    <h3>{s.title}</h3>
+                    <div class="eq"><i></i><i></i><i></i><i></i></div>
+                    <button class="like" data-title={s.title} title="喜欢这首歌">🤍</button>
+                  </div>
                   {s.note && <span class="note">{s.note}</span>}
                   <audio controls preload="none" src={s.file}></audio>
                 </div>
@@ -73,8 +105,8 @@ const links = [
           )}
       </section>
 
-      <section id="videos">
-        <h2>🎬 我的视频</h2>
+      <section id="videos" class="reveal">
+        <h2>🎬 我的<span class="hl">视频</span></h2>
         {videos.length === 0
           ? <div class="empty">还没有视频。传到 B 站或 YouTube 后，把嵌入链接贴到 src/data/content.js 即可。</div>
           : (
@@ -91,34 +123,115 @@ const links = [
       </section>
 
       {projects.length > 0 && (
-        <section id="projects">
-          <h2>🛠 作品集</h2>
+        <section id="projects" class="reveal">
+          <h2>🛠 <span class="hl">作品</span>集</h2>
           <div class="grid">
             {projects.map(p => (
               <div class="card">
                 <h3>{p.title}</h3>
                 <p class="note">{p.desc}</p>
-                {p.link && <a class="proj" href={p.link} target="_blank" rel="noopener">去看看 →</a>}
+                {p.link && <a class="btn ghost" style="padding:8px 18px;" href={p.link} target="_blank" rel="noopener">去看看 →</a>}
               </div>
             ))}
           </div>
         </section>
       )}
 
-      {Object.values(c).some(v => v) && (
-        <section id="contact">
-          <h2>📮 联系我</h2>
-          <div class="contact-list">
-            {c.github && <a href={c.github} target="_blank" rel="noopener">💻 GitHub</a>}
-            {c.bilibili && <a href={c.bilibili} target="_blank" rel="noopener">📺 B站</a>}
-            {c.email && <a href={c.email}>✉️ 邮箱</a>}
-          </div>
-        </section>
-      )}
+      <section id="comments" class="reveal">
+        <h2>💬 <span class="hl">留言板</span> · 找我交朋友</h2>
+        <div class="card comment-box">
+          {giscusOn ? (
+            <div>
+              <script is:inline src="https://giscus.app/client.js"
+                data-repo={cm.repo} data-repo-id={cm.repoId}
+                data-category={cm.category || "Announcements"} data-category-id={cm.categoryId}
+                data-mapping="pathname" data-strict="0" data-reactions-enabled="1"
+                data-theme="preferred_color_scheme" data-lang="zh-CN" data-loading="lazy"
+                crossorigin="anonymous" async></script>
+            </div>
+          ) : (
+            <div class="empty" style="border:none;">
+              留言板正在装修中 🛠 —— 现阶段欢迎去 GitHub 上找我留言：<br />
+              <a class="btn primary" style="margin-top:10px;" href={discussionsUrl} target="_blank" rel="noopener">去 GitHub Discussions 留言</a>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section id="contact" class="reveal">
+        <h2>📮 <span class="hl">联系</span>我</h2>
+        <div class="contact-list">
+          {c.github && <a href={c.github} target="_blank" rel="noopener">💻 GitHub</a>}
+          {c.bilibili && <a href={c.bilibili} target="_blank" rel="noopener">📺 B站</a>}
+          {c.email && <a href={c.email}>✉️ 邮箱</a>}
+        </div>
+      </section>
     </main>
 
     <footer class="site">
       <div class="wrap">{Content.footer}</div>
     </footer>
+
+    <script>
+      // ===== 明暗主题切换 =====
+      const themeBtn = document.getElementById('themeBtn');
+      const setTheme = (t) => {
+        document.documentElement.dataset.theme = t;
+        try { localStorage.setItem('mm-theme', t); } catch (e) {}
+        themeBtn.textContent = t === 'dark' ? '🌙' : '☀️';
+      };
+      setTheme(document.documentElement.dataset.theme || 'dark');
+      themeBtn.addEventListener('click', () => {
+        setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+      });
+
+      // ===== 打字机欢迎语（口号放在 <body data-slogan> 里） =====
+      const typedEl = document.getElementById('typed');
+      const text = document.body.dataset.slogan || '';
+      let ti = 0;
+      (function type() {
+        if (ti <= text.length) {
+          typedEl.textContent = text.slice(0, ti++);
+          setTimeout(type, 95);
+        }
+      })();
+
+      // ===== 顶部进度条 =====
+      const bar = document.getElementById('progress');
+      addEventListener('scroll', () => {
+        const h = document.documentElement;
+        bar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+      }, { passive: true });
+
+      // ===== 滚动浮现 =====
+      const io = new IntersectionObserver(es => {
+        es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+      }, { threshold: 0.12 });
+      document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+      // ===== 播放管理：同一时间只播一首，播放时唱片旋转 + 均衡器 =====
+      document.querySelectorAll('.card:has(audio)').forEach(card => {
+        const audio = card.querySelector('audio');
+        audio.addEventListener('play', () => {
+          document.querySelectorAll('audio').forEach(a => { if (a !== audio) a.pause(); });
+          document.querySelectorAll('.playing').forEach(x => { if (x !== card) x.classList.remove('playing'); });
+          card.classList.add('playing');
+        });
+        ['pause', 'ended'].forEach(ev => audio.addEventListener(ev, () => card.classList.remove('playing')));
+      });
+
+      // ===== 点赞（保存在本机浏览器里） =====
+      document.querySelectorAll('.like').forEach(btn => {
+        const key = 'mm-like:' + btn.dataset.title;
+        let on = false;
+        try { on = localStorage.getItem(key) === '1'; } catch (e) {}
+        if (on) { btn.classList.add('on'); btn.textContent = '❤️'; }
+        btn.addEventListener('click', () => {
+          const now = btn.classList.toggle('on');
+          btn.textContent = now ? '❤️' : '🤍';
+          try { localStorage.setItem(key, now ? '1' : '0'); } catch (e) {}
+        });
+      });
+    </script>
   </body>
 </html>

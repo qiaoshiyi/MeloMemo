@@ -8,7 +8,7 @@ export default {
 
   // ---------- 基本信息 ----------
   name: "乔十一",               // 网站大标题
-  slogan: "一个爱唱歌的人 🎤",    // 首页副标题，一句话介绍
+  slogan: "一个爱唱歌的人 🎤",    // 首页副标题，会以打字机效果显示
   about: "在这里写一段关于自己的介绍。\n比如：我平时喜欢翻唱歌曲，也拍一些视频，欢迎来听、来看、交个朋友。",
 
   // 头像（可选）：把图片放进 public/ 文件夹，比如 avatar.jpg，然后填 "/avatar.jpg"
@@ -34,13 +34,26 @@ export default {
   // { title: "作品名", desc: "一句话说明", link: "https://..." }
   projects: [],
 
+  // ---------- 音乐社区方向的关键词（展示在首页，方便找到同好） ----------
+  tags: ["翻唱", "民谣", "流行", "吉他", "原创"],
+
+  // ---------- 留言板（GitHub Discussions，可选） ----------
+  // repo 填 "用户名/仓库名"；repoId/categoryId 到 https://giscus.app 里按提示获取后填进来
+  // repoId 没填时，留言板区域会提示先去 GitHub Discussions 留言
+  comments: {
+    repo: "qiaoshiyi/MeloMemo",
+    repoId: "",
+    category: "Announcements",
+    categoryId: "",
+  },
+
   // ---------- 联系方式（留空 "" 就不显示） ----------
   contact: {
-    github: "",            // 例如 "https://github.com/你的用户名"
+    github: "https://github.com/qiaoshiyi",      // 例如 "https://github.com/你的用户名"
     bilibili: "",          // 例如 "https://space.bilibili.com/你的空间号"
     email: "",             // 例如 "mailto:you@example.com" 或 "mailto:you@qq.com"
   },
 
   // ---------- 页脚 ----------
-  footer: "© 2026 乔十一 · 用 Astro 搭建",
+  footer: "© 2026 乔十一 · MeloMemo · 用 Astro 搭建",
 };
