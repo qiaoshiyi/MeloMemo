@@ -6,6 +6,6 @@
 //  填好推送后社区功能即上线。留空时网站会显示"初始化中"。
 // ============================================================
 window.MELO_CONFIG = {
-  url: "",
-  anonKey: "",
+  url: "https://mhfhbuivdwmdhqikjryu.supabase.co",
+  anonKey: "sb_publishable_DpQ1DR4l-JPXqqmAi4Hcvw_ZHvnvK8K",
 };
