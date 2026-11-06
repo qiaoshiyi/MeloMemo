@@ -1,0 +1,488 @@
+---
+// MeloMemo · 社区应用页（注册/登录、发布作品、社区动态、个人主页）
+// 全部交互在浏览器端完成，后端是 Supabase（见 supabase/schema.sql 与 public/config.js）
+import Content from '../data/content.js';
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MeloMemo 社区 · 唱给你听</title>
+    <meta name="description" content="MeloMemo 音乐社区：上传你的翻唱与原创，关注喜欢的声音，交到同好朋友。" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script is:inline src="/config.js"></script>
+    <script is:inline>
+      try { var __t = localStorage.getItem('mm-theme'); if (__t) document.documentElement.dataset.theme = __t; } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <nav>
+      <div class="wrap">
+        <a class="logo" href="/">🎶 MeloMemo</a>
+        <a class="item" href="/#about">关于我</a>
+        <a class="item" href="#/feed">社区动态</a>
+        <a class="item" href="#/publish">发布作品</a>
+        <button id="themeBtn" title="切换明暗主题">🌙</button>
+      </div>
+    </nav>
+
+    <main class="wrap app">
+      <!-- 未接入 Supabase 时的提示 -->
+      <div id="setupBanner" class="setup" hidden>
+        🛠 社区服务正在初始化——数据库接上后这里就是注册入口。
+      </div>
+
+      <!-- 登录 / 注册 -->
+      <section id="authView">
+        <h2>🎤 加入 <span class="hl">MeloMemo 社区</span></h2>
+        <p class="lead">注册一个账号，上传你的翻唱和原创，去别人的主页听歌、点关注，陪着音乐交朋友。</p>
+        <div class="card auth-card">
+          <div class="tabs2">
+            <button class="seg on" data-mode="login">登录</button>
+            <button class="seg" data-mode="signup">注册</button>
+          </div>
+          <label>邮箱 <input id="email" type="email" placeholder="you@example.com" autocomplete="email" /></label>
+          <label>密码 <input id="password" type="password" placeholder="至少 6 位" autocomplete="current-password" /></label>
+          <button id="authBtn" class="btn primary">登录</button>
+          <p id="authMsg" class="msg"></p>
+        </div>
+      </section>
+
+      <!-- 登录后的社区 -->
+      <section id="shell" hidden>
+        <div class="whoami card">
+          <div class="mini-avatar" id="mineAvatar">🎵</div>
+          <div class="who">
+            <strong id="mineName"></strong>
+            <span id="mineHandle" class="muted"></span>
+          </div>
+          <button id="logoutBtn" class="btn ghost tiny">退出登录</button>
+        </div>
+
+        <div class="tabs3">
+          <button data-view="feed" class="on">🔥 社区动态</button>
+          <button data-view="publish">⬆️ 发布作品</button>
+          <button data-view="me">🏠 我的主页</button>
+        </div>
+
+        <!-- 社区动态 -->
+        <div id="feedView">
+          <div class="grid" id="feedList"></div>
+        </div>
+
+        <!-- 发布作品 -->
+        <div id="publishView" hidden>
+          <div class="card form-card">
+            <label>歌曲标题 <input id="songTitle" maxlength="100" placeholder="例如：《南山南》翻唱" /></label>
+            <label>一句话说明（可选）<input id="songNote" maxlength="200" placeholder="翻唱 · 吉他自弹 · 2026" /></label>
+            <label>音频文件 <input id="songFile" type="file" accept="audio/*" /></label>
+            <button id="publishBtn" class="btn primary">🚀 发布</button>
+            <p id="publishMsg" class="msg"></p>
+          </div>
+          <h3 class="sub">我发布过的 <span id="myCount" class="muted"></span></h3>
+          <div class="grid" id="mineList"></div>
+        </div>
+
+        <!-- 我的主页（编辑资料） -->
+        <div id="meView" hidden>
+          <div class="card form-card">
+            <label>昵称 <input id="pfName" maxlength="24" /></label>
+            <label>个人简介 <input id="pfBio" maxlength="80" placeholder="一句话介绍你的音乐" /></label>
+            <label>主页地址（字母/数字/下划线）<input id="pfUsername" maxlength="24" /></label>
+            <button id="saveProfileBtn" class="btn primary">保存</button>
+            <p id="profileMsg" class="msg"></p>
+          </div>
+          <p class="muted center">你的公开主页是：<span id="myUrl" class="mono"></span></p>
+        </div>
+      </section>
+
+      <!-- 他人主页 -->
+      <section id="profileView" hidden>
+        <div class="card profile-card">
+          <div class="mini-avatar big" id="pfAvatar">🎵</div>
+          <div class="pf-head">
+            <h2 id="pfDisplay"></h2>
+            <span class="muted" id="pfHandle"></span>
+            <p class="muted" id="pfBio"></p>
+            <div class="stats">
+              <span><b id="pfWorks">0</b> 作品</span>
+              <span><b id="pfFollowers">0</b> 粉丝</span>
+              <span><b id="pfFollowing">0</b> 关注中</span>
+            </div>
+          </div>
+          <button id="followBtn" class="btn primary">关注</button>
+        </div>
+        <div class="grid" id="pfWorksList"></div>
+      </section>
+    </main>
+
+    <footer class="site"><div class="wrap">© 2026 MeloMemo · 音乐是交朋友最快的路</div></footer>
+
+    <div id="mini" hidden>
+      <div class="mini-cover" id="miniCover">🎤</div>
+      <div class="mini-info"><strong id="miniTitle"></strong><div class="mini-bar"><i id="miniFill"></i></div></div>
+      <button id="miniToggle" title="播放/暂停">⏸</button>
+      <button id="miniClose" title="关闭">✕</button>
+    </div>
+
+    <style>
+      .app { padding: 40px 22px 80px; min-height: 70vh; }
+      .lead { color: var(--muted); margin: -6px 0 18px; }
+      .muted { color: var(--muted); }
+      .center { text-align: center; }
+      .mono { font-family: Consolas, monospace; font-size: 14px; }
+      .sub { margin: 26px 0 14px; font-size: 18px; }
+      .setup { background: var(--card); border: 1.5px dashed var(--card-border); padding: 22px; border-radius: 18px; margin: 18px 0 26px; text-align: center; color: var(--muted); }
+      .msg { min-height: 1.4em; color: var(--muted); font-size: 14px; margin: 8px 0 0; }
+      .msg.err { color: var(--accent); }
+      .auth-card, .form-card { max-width: 460px; display: flex; flex-direction: column; gap: 14px; padding: 24px; margin: 0 auto; }
+      .auth-card label, .form-card label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--muted); }
+      input[type=email], input[type=password], input[type=text], .form-card input:not([type=file]) {
+        background: color-mix(in srgb, var(--bg) 55%, transparent);
+        border: 1px solid var(--card-border); border-radius: 12px;
+        color: var(--ink); padding: 11px 14px; font-size: 15px; outline: none;
+      }
+      input:focus { border-color: var(--accent-2); }
+      .form-card input[type=file] { color: var(--muted); font-size: 13px; }
+      .tabs2 { display: flex; gap: 6px; }
+      .seg { flex: 1; padding: 10px; border-radius: 12px; border: 1px solid var(--card-border); background: none; color: var(--muted); cursor: pointer; font-size: 15px; }
+      .seg.on { background: var(--gradient); color: #fff; border-color: transparent; font-weight: 700; }
+      .whoami { flex-direction: row; align-items: center; gap: 12px; padding: 14px 18px; margin-bottom: 18px; }
+      .who { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+      .who strong { font-size: 16px; }
+      .btn.tiny { padding: 7px 14px; font-size: 13px; }
+      .tabs3 { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+      .tabs3 button {
+        padding: 10px 20px; border-radius: 999px; cursor: pointer; font-size: 14.5px;
+        border: 1px solid var(--card-border); background: var(--card); color: var(--muted);
+      }
+      .tabs3 button.on { background: var(--gradient); color: #fff; border-color: transparent; font-weight: 700; }
+      .mini-avatar {
+        width: 46px; height: 46px; border-radius: 50%; flex: none;
+        display: flex; align-items: center; justify-content: center; font-size: 22px; color: #fff;
+        background: var(--gradient);
+      }
+      .mini-avatar.big { width: 74px; height: 74px; font-size: 34px; }
+      .profile-card { flex-direction: row; align-items: center; gap: 16px; max-width: 640px; margin: 0 auto 22px; flex-wrap: wrap; }
+      .pf-head { flex: 1; min-width: 200px; }
+      .pf-head h2 { margin: 0 0 2px; font-size: 22px; }
+      .pf-head p { margin: 4px 0; font-size: 14px; }
+      .stats { display: flex; gap: 16px; font-size: 13.5px; color: var(--muted); margin-top: 8px; }
+      .stats b { color: var(--ink); font-size: 15px; }
+      .work-cover { height: 120px; border-radius: 14px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 40px; color: #fff; background: linear-gradient(135deg, #2b3a67, #6c8cff 55%, #ff5e7a); }
+      .work-cover img { width: 100%; height: 120px; object-fit: cover; display: block; }
+      .playing .work-cover { animation: spin 3.2s linear infinite; }
+      .byline { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+      .byline a { color: var(--accent-2); text-decoration: none; font-weight: 700; }
+      .del { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 4px 8px; border-radius: 8px; }
+      .del:hover { color: var(--accent); background: var(--card); }
+      .mutual { font-size: 12px; background: var(--gradient); color: #fff; padding: 3px 10px; border-radius: 999px; }
+      #toTop { display: none; }
+      @media (max-width: 640px) {
+        nav .wrap { flex-wrap: wrap; height: auto; row-gap: 2px; padding: 10px 16px 8px; }
+        nav .logo { width: 100%; font-size: 17px; }
+        nav .item { flex: 1 1 auto; text-align: center; font-size: 13px; padding: 7px 6px; }
+        .profile-card { flex-direction: column; align-items: flex-start; }
+      }
+    </style>
+
+    <script>
+      const cfg = window.MELO_CONFIG || {};
+      const banner = document.getElementById('setupBanner');
+      if (!cfg.url || !cfg.anonKey) banner.hidden = false;
+      const sb = (window.supabase && cfg.url) ? window.supabase.createClient(cfg.url, cfg.anonKey) : null;
+
+      // ---------- 通用小工具 ----------
+      const $ = id => document.getElementById(id);
+      const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const msg = (el, text, err) => { el.textContent = text; el.classList.toggle('err', !!err); };
+      const initials = name => (name && name.trim()) ? name.trim().slice(0, 1).toUpperCase() : '🎵';
+
+      // ---------- 主题切换 ----------
+      const themeBtn = $('themeBtn');
+      const setTheme = t => {
+        document.documentElement.dataset.theme = t;
+        try { localStorage.setItem('mm-theme', t); } catch (e) {}
+        themeBtn.textContent = t === 'dark' ? '🌙' : '☀️';
+      };
+      setTheme(document.documentElement.dataset.theme || 'dark');
+      themeBtn.addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+      let user = null;
+      let myProfile = null;
+      const followingSet = new Set();
+
+      // ---------- 迷你播放条（与首页同款） ----------
+      const mini = $('mini'), miniTitle = $('miniTitle'), miniCover = $('miniCover'),
+            miniFill = $('miniFill'), miniToggle = $('miniToggle'), miniClose = $('miniClose');
+      let currentAudio = null;
+      miniToggle.addEventListener('click', () => { if (currentAudio) currentAudio.paused ? currentAudio.play() : currentAudio.pause(); });
+      miniClose.addEventListener('click', () => { if (currentAudio) currentAudio.pause(); mini.hidden = true; });
+
+      function wirePlay(card, audio, title, coverUrl) {
+        audio.addEventListener('play', () => {
+          document.querySelectorAll('audio').forEach(a => { if (a !== audio) a.pause(); });
+          currentAudio = audio;
+          mini.hidden = false;
+          miniTitle.textContent = title;
+          if (coverUrl) { miniCover.style.backgroundImage = `url(${coverUrl})`; miniCover.textContent = ''; }
+          else { miniCover.style.backgroundImage = ''; miniCover.textContent = '🎤'; }
+          miniCover.classList.add('spin');
+          miniToggle.textContent = '⏸';
+          card.classList.add('playing');
+          if (sb && audio.dataset.workId) sb.rpc('bump_plays', { w: audio.dataset.workId });
+        });
+        audio.addEventListener('playing', () => { miniToggle.textContent = '⏸'; });
+        ['pause', 'ended'].forEach(ev => audio.addEventListener(ev, () => {
+          miniToggle.textContent = '▶';
+          miniCover.classList.remove('spin');
+          card.classList.remove('playing');
+        }));
+        audio.addEventListener('timeupdate', () => {
+          if (currentAudio !== audio) return;
+          miniFill.style.width = (audio.currentTime / (audio.duration || 1) * 100) + '%';
+        });
+      }
+
+      // ---------- 作品卡片模板 ----------
+      function workCard(w, opts = {}) {
+        const audioUrl = sb.storage.from('songs').getPublicUrl(w.storage_path).data.publicUrl;
+        const who = w.profiles || {};
+        const isMine = user && w.user_id === user.id;
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `
+          <div class="work-cover">🎤</div>
+          <div class="row">
+            <h3 style="margin:0;font-size:16.5px;">${esc(w.title)}</h3>
+            ${opts.ownerView ? `<button class="del" data-id="${w.id}" title="删除作品">🗑</button>` : ''}
+          </div>
+          ${w.note ? `<span class="note">${esc(w.note)}</span>` : ''}
+          ${!opts.ownerView ? `<div class="byline">由 <a href="#/u/${esc(who.username || '')}">${esc(who.display_name || who.username || '神秘音乐人')}</a>${opts.mutual ? '<span class="mutual">互相关注</span>' : ''}</div>` : ''}
+          <span class="note">▶ ${w.plays || 0} 次播放</span>
+          <audio controls preload="none" src="${esc(audioUrl)}" data-work-id="${w.id}"></audio>
+        `;
+        wirePlay(div, div.querySelector('audio'), w.title, w.works_cover || null);
+        const del = div.querySelector('.del');
+        if (del) del.addEventListener('click', async () => {
+          if (!sb || !confirm(`确定删除《${w.title}》吗？`)) return;
+          await sb.from('works').delete().eq('id', w.id);
+          await sb.storage.from('songs').remove([w.storage_path]);
+          div.remove();
+        });
+        return div;
+      }
+
+      function renderWorkList(container, works, opts) {
+        container.innerHTML = '';
+        works.forEach(w => container.appendChild(workCard(w, opts)));
+      }
+
+      // ---------- 视图路由： #/feed · #/publish · #/me · #/u/用户名 ----------
+      const authView = $('authView'), shell = $('shell'),
+            feedView = $('feedView'), publishView = $('publishView'), meView = $('meView'),
+            profileView = $('profileView');
+
+      function showViews(v) {
+        authView.hidden = !v.auth;
+        shell.hidden = !v.shell;
+        profileView.hidden = !v.profile;
+        feedView.hidden = true;
+        publishView.hidden = true;
+        meView.hidden = true;
+        document.querySelectorAll('.tabs3 button').forEach(b => b.classList.remove('on'));
+      }
+      const tabStyle = name => {
+        const b = document.querySelector(`.tabs3 button[data-view="${name}"]`);
+        if (b) b.classList.add('on');
+      };
+
+      async function route() {
+        const hash = location.hash || '#/feed';
+        if (!sb || !user) { showViews({ auth: true }); return; }
+        const m = hash.match(/^#\/u\/([a-zA-Z0-9_]+)$/);
+        if (m) {
+          const target = await loadProfile(m[1]);
+          if (target) return; // loadProfile 已渲染
+          location.hash = '#/feed';
+        }
+        showViews({ shell: true });
+        const view = hash.replace('#/', '') || 'feed';
+        if (view === 'publish') { tabStyle('publish'); publishView.hidden = false; await loadMine(); }
+        else if (view === 'me') { tabStyle('me'); meView.hidden = false; }
+        else { tabStyle('feed'); feedView.hidden = false; await loadFeed(); }
+      }
+      addEventListener('hashchange', route);
+
+      // ---------- 登录 / 注册 ----------
+      let signupMode = false;
+      document.querySelectorAll('.seg').forEach(btn => btn.addEventListener('click', () => {
+        document.querySelectorAll('.seg').forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
+        signupMode = btn.dataset.mode === 'signup';
+        $('authBtn').textContent = signupMode ? '注册' : '登录';
+        msg($('authMsg'), '');
+      }));
+      $('authBtn').addEventListener('click', async () => {
+        if (!sb) return;
+        const email = $('email').value.trim(), password = $('password').value;
+        msg($('authMsg'), '处理中…');
+        try {
+          if (signupMode) {
+            const { error } = await sb.auth.signUp({ email, password });
+            if (error) throw error;
+            msg($('authMsg'), '注册成功！如果平台开启了邮箱验证，请先去邮箱点确认邮件，再回来登录。');
+          } else {
+            const { error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+          }
+        } catch (e) {
+          msg($('authMsg'), (e.message || '出错了，检查邮箱和密码是否正确') , true);
+        }
+      });
+      $('logoutBtn').addEventListener('click', () => sb && sb.auth.signOut());
+
+      // ---------- 登录状态 ----------
+      function setShell(profile) {
+        myProfile = profile;
+        $('mineName').textContent = profile.display_name || profile.username;
+        $('mineHandle').textContent = '@' + profile.username;
+        $('mineAvatar').textContent = initials(profile.display_name || profile.username);
+        $('pfName').value = profile.display_name || '';
+        $('pfBio').value = profile.bio || '';
+        $('pfUsername').value = profile.username || '';
+        $('myUrl').textContent = `${location.origin}/app#/u/${profile.username}`;
+      }
+
+      async function loadProfile(username) {
+        const { data: pf, error } = await sb.from('profiles').select('*').eq('username', username).maybeSingle();
+        if (!pf || error) return false;
+        const isSelf = user && pf.id === user.id;
+        const [{ count: followers }, { count: followingN }, { count: worksN }, followsData] = await Promise.all([
+          sb.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', pf.id),
+          sb.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', pf.id),
+          sb.from('works').select('*', { count: 'exact', head: true }).eq('user_id', pf.id),
+          sb.from('follows').select('follower_id').eq('following_id', pf.id),
+        ]);
+        let mutual = false, iFollow = false;
+        if (user && !isSelf) {
+          iFollow = followsData.data.some(f => f.follower_id === user.id);
+          const theyFollowMe = await sb.from('follows').select('follower_id').eq('following_id', user.id).eq('follower_id', pf.id).maybeSingle();
+          mutual = iFollow && !!theyFollowMe.data;
+        }
+        $('pfDisplay').textContent = pf.display_name || pf.username;
+        $('pfHandle').textContent = '@' + pf.username;
+        $('pfBio').textContent = pf.bio || '这位音乐人还没写简介。';
+        $('pfAvatar').textContent = initials(pf.display_name || pf.username);
+        $('pfWorks').textContent = worksN ?? 0;
+        $('pfFollowers').textContent = followers ?? 0;
+        $('pfFollowing').textContent = followingN ?? 0;
+        const fBtn = $('followBtn');
+        fBtn.hidden = isSelf;
+        fBtn.disabled = !user;
+        fBtn.textContent = isSelf ? '这是你自己' : (iFollow ? '✓ 已关注' : '+ 关注');
+        fBtn.onclick = async () => {
+          if (!user) { msg($('authMsg'), '先登录再关注哦'); return; }
+          if (iFollow) { await sb.from('follows').delete().eq('follower_id', user.id).eq('following_id', pf.id); iFollow = false; }
+          else { await sb.from('follows').insert({ follower_id: user.id, following_id: pf.id }); iFollow = true; }
+          fBtn.textContent = iFollow ? '✓ 已关注' : '+ 关注';
+          const nf = await sb.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', pf.id);
+          $('pfFollowers').textContent = nf.count ?? 0;
+          route();
+        };
+        const { data: works } = await sb.from('works').select('*, profiles(username, display_name)').eq('user_id', pf.id).order('created_at', { ascending: false });
+        showViews({ profile: true });
+        renderWorkList($('pfWorksList'), works || {}, {});
+        return true;
+      }
+
+      // ---------- 社区动态（好友优先，其余按时间） ----------
+      async function loadFeed() {
+        if (!sb) return;
+        const { data: works } = await sb.from('works')
+          .select('*, profiles(username, display_name)')
+          .order('created_at', { ascending: false }).limit(40);
+        const list = $('feedList');
+        list.innerHTML = '';
+        (works || []).forEach(w => list.appendChild(workCard(w, {})));
+        if (!works || works.length === 0) list.innerHTML = '<div class="empty">还没有作品，等你来当第一个发布者 🎤</div>';
+      }
+
+      // ---------- 我的作品 ----------
+      async function loadMine() {
+        if (!sb || !user) return;
+        const { data: works, count } = await sb.from('works').select('*', { count: 'exact' }).eq('user_id', user.id).order('created_at', { ascending: false });
+        $('myCount').textContent = `共 ${count ?? 0} 首`;
+        renderWorkList($('mineList'), works || [], { ownerView: true });
+      }
+
+      // ---------- 发布 ----------
+      $('publishBtn').addEventListener('click', async () => {
+        if (!sb || !user) return;
+        const title = $('songTitle').value.trim();
+        const note = $('songNote').value.trim();
+        const file = $('songFile').files[0];
+        msg($('publishMsg'), '');
+        if (!title || !file) { msg($('publishMsg'), '歌曲标题和音频文件都要有哦', true); return; }
+        if (file.size > 50 * 1024 * 1024) { msg($('publishMsg'), '文件请小于 50MB', true); return; }
+        msg($('publishMsg'), '上传中，请稍等…');
+        const path = `${user.id}/${Date.now()}-${file.name.replace(/[^\w.\-]/g, '_')}`;
+        try {
+          const up = await sb.storage.from('songs').upload(path, file);
+          if (up.error) throw up.error;
+          const ins = await sb.from('works').insert({ user_id: user.id, title, note, storage_path: path });
+          if (ins.error) throw ins.error;
+          msg($('publishMsg'), '🎉 发布成功！');
+          $('songTitle').value = ''; $('songNote').value = ''; $('songFile').value = '';
+          await loadMine();
+        } catch (e) {
+          msg($('publishMsg'), '发布失败：' + (e.message || '未知错误'), true);
+        }
+      });
+
+      // ---------- 资料编辑 ----------
+      function fillProfileForm() { /* 已在 setShell 填好 */ }
+      $('saveProfileBtn').addEventListener('click', async () => {
+        if (!sb || !user) return;
+        const display_name = $('pfName').value.trim() || '音乐人';
+        const bio = $('pfBio').value.trim();
+        const username = $('pfUsername').value.trim();
+        msg($('profileMsg'), '');
+        if (!/^[a-zA-Z0-9_]{2,24}$/.test(username)) { msg($('profileMsg'), '主页地址只能是 2-24 位字母、数字、下划线', true); return; }
+        const dupe = await sb.from('profiles').select('id').eq('username', username).neq('id', user.id).maybeSingle();
+        if (dupe.data) { msg($('profileMsg'), '这个主页地址已被占用', true); return; }
+        const { error } = await sb.from('profiles').update({ username, display_name, bio }).eq('id', user.id);
+        if (error) { msg($('profileMsg'), '保存失败：' + error.message, true); return; }
+        myProfile = { ...myProfile, username, display_name, bio };
+        setShell(myProfile);
+        msg($('profileMsg'), '✅ 已保存，你的新主页地址已生效');
+      });
+
+      // ---------- 启动 ----------
+      (async function boot() {
+        if (!sb) return;
+        const { data } = await sb.auth.getUser();
+        user = data?.user ?? null;
+        if (user) {
+          const { data: pf } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
+          if (pf) setShell(pf);
+          const { data: f } = await sb.from('follows').select('following_id').eq('follower_id', user.id);
+          (f || []).forEach(x => followingSet.add(x.following_id));
+        }
+        sb.auth.onAuthStateChange((event, session) => {
+          const nowIn = !!session?.user;
+          if (nowIn !== !!user || (nowIn && session.user.id !== user?.id)) {
+            user = session?.user ?? null;
+            if (nowIn) location.reload();
+            else location.reload();
+          }
+        });
+        await route();
+      })();
+    </script>
+  </body>
+</html>
