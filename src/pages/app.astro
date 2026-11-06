@@ -71,6 +71,13 @@ import '../styles/global.css';
 
         <!-- 社区动态 -->
         <div id="feedView">
+          <div class="feed-tools">
+            <input id="feedSearch" type="text" placeholder="🔍 搜索歌名或说明…" />
+            <div class="sortseg">
+              <button class="smini on" data-sort="new">最新</button>
+              <button class="smini" data-sort="hot">最热</button>
+            </div>
+          </div>
           <div class="grid" id="feedList"></div>
         </div>
 
@@ -113,8 +120,12 @@ import '../styles/global.css';
               <span><b id="pfFollowers">0</b> 粉丝</span>
               <span><b id="pfFollowing">0</b> 关注中</span>
             </div>
+            <div class="frows" id="pfFollowRows"></div>
           </div>
-          <button id="followBtn" class="btn primary">关注</button>
+          <div class="pf-actions">
+            <button id="followBtn" class="btn primary">关注</button>
+            <button id="shareBtn" class="btn ghost tiny">🔗 分享主页</button>
+          </div>
         </div>
         <div class="grid" id="pfWorksList"></div>
       </section>
@@ -181,6 +192,21 @@ import '../styles/global.css';
       .del { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 4px 8px; border-radius: 8px; }
       .del:hover { color: var(--accent); background: var(--card); }
       .mutual { font-size: 12px; background: var(--gradient); color: #fff; padding: 3px 10px; border-radius: 999px; }
+      .pf-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+      .feed-tools { display: flex; gap: 10px; margin-bottom: 18px; align-items: center; flex-wrap: wrap; }
+      .feed-tools input {
+        flex: 1; min-width: 200px;
+        background: var(--card); border: 1px solid var(--card-border); border-radius: 999px;
+        color: var(--ink); padding: 10px 16px; font-size: 14.5px; outline: none;
+      }
+      .feed-tools input:focus { border-color: var(--accent-2); }
+      .sortseg { display: flex; gap: 4px; }
+      .smini { padding: 9px 16px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--muted); cursor: pointer; font-size: 14px; }
+      .smini.on { background: var(--gradient); color: #fff; border-color: transparent; font-weight: 700; }
+      .frows { width: 100%; font-size: 13.5px; }
+      .frow { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; flex-wrap: wrap; }
+      .frow .lab { color: var(--muted); flex: none; padding-top: 4px; }
+      .chip { display: inline-block; padding: 3px 12px; border-radius: 999px; background: color-mix(in srgb, var(--accent-2) 14%, transparent); color: var(--accent-2); text-decoration: none; font-weight: 600; }
       #toTop { display: none; }
       @media (max-width: 640px) {
         nav .wrap { flex-wrap: wrap; height: auto; row-gap: 2px; padding: 10px 16px 8px; }
@@ -214,7 +240,26 @@ import '../styles/global.css';
 
       let user = null;
       let myProfile = null;
+      let viewingUsername = '';
       const followingSet = new Set();
+
+      // ---------- 关注名单展示（关注中 / 粉丝，点名字直达主页） ----------
+      async function renderFollowRows(followingIds, fanIds) {
+        const rows = $('pfFollowRows'); if (!rows) return;
+        const fetchNames = async ids => {
+          if (!ids.length) return [];
+          const { data } = await sb.from('profiles').select('username, display_name, bio').in('id', ids);
+          return data || [];
+        };
+        const [fg, fs] = await Promise.all([fetchNames(followingIds), fetchNames(fanIds)]);
+        const chips = list => list.length
+          ? list.map(p => `<a class="chip" href="#/u/${esc(p.username)}" title="${esc(p.bio || '')}">${esc(p.display_name || p.username)}</a>`).join('')
+          : '<span class="muted">还没有</span>';
+        rows.innerHTML = `
+          <div class="frow"><span class="lab">关注中：</span>${chips(fg)}</div>
+          <div class="frow"><span class="lab">粉丝：</span>${chips(fs)}</div>
+        `;
+      }
 
       // ---------- 迷你播放条（与首页同款） ----------
       const mini = $('mini'), miniTitle = $('miniTitle'), miniCover = $('miniCover'),
@@ -346,6 +391,20 @@ import '../styles/global.css';
       });
       $('logoutBtn').addEventListener('click', () => sb && sb.auth.signOut());
 
+      // ---------- 一键分享当前主页 ----------
+      $('shareBtn').addEventListener('click', async () => {
+        if (!viewingUsername) return;
+        const link = `${location.origin}/app#/u/${viewingUsername}`;
+        try { await navigator.clipboard.writeText(link); }
+        catch (e) { prompt('复制这个链接发给朋友：', link); return; }
+        const btn = $('shareBtn'); btn.textContent = '✅ 已复制'; setTimeout(() => btn.textContent = '🔗 分享主页', 1600);
+      });
+
+      // ---------- 回车直接登录 / 注册 ----------
+      ['email', 'password'].forEach(id => $(id).addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); $('authBtn').click(); }
+      }));
+
       // ---------- 登录状态 ----------
       function setShell(profile) {
         myProfile = profile;
@@ -362,11 +421,12 @@ import '../styles/global.css';
         const { data: pf, error } = await sb.from('profiles').select('*').eq('username', username).maybeSingle();
         if (!pf || error) return false;
         const isSelf = user && pf.id === user.id;
-        const [{ count: followers }, { count: followingN }, { count: worksN }, followsData] = await Promise.all([
+        const [{ count: followers }, { count: followingN }, { count: worksN }, followsData, followingData] = await Promise.all([
           sb.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', pf.id),
           sb.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', pf.id),
           sb.from('works').select('*', { count: 'exact', head: true }).eq('user_id', pf.id),
           sb.from('follows').select('follower_id').eq('following_id', pf.id),
+          sb.from('follows').select('following_id').eq('follower_id', pf.id),
         ]);
         let mutual = false, iFollow = false;
         if (user && !isSelf) {
@@ -375,10 +435,11 @@ import '../styles/global.css';
           mutual = iFollow && !!theyFollowMe.data;
         }
         $('pfDisplay').textContent = pf.display_name || pf.username;
+        viewingUsername = pf.username;
         $('pfHandle').textContent = '@' + pf.username;
         $('pfBio').textContent = pf.bio || '这位音乐人还没写简介。';
         $('pfAvatar').textContent = initials(pf.display_name || pf.username);
-        $('pfWorks').textContent = worksN ?? 0;
+        renderFollowRows(followingData.data.map(x => x.following_id), followsData.data.map(x => x.follower_id));        $('pfWorks').textContent = worksN ?? 0;
         $('pfFollowers').textContent = followers ?? 0;
         $('pfFollowing').textContent = followingN ?? 0;
         const fBtn = $('followBtn');
@@ -400,16 +461,34 @@ import '../styles/global.css';
         return true;
       }
 
-      // ---------- 社区动态（好友优先，其余按时间） ----------
+      // ---------- 社区动态（搜索 + 最新/最热排序） ----------
+      const feedState = { q: '', sort: 'new' };
+      const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+      $('feedSearch').addEventListener('input', debounce(() => {
+        feedState.q = $('feedSearch').value.trim();
+        loadFeed();
+      }, 280));
+      document.querySelectorAll('.smini').forEach(b => b.addEventListener('click', () => {
+        document.querySelectorAll('.smini').forEach(x => x.classList.remove('on'));
+        b.classList.add('on');
+        feedState.sort = b.dataset.sort;
+        loadFeed();
+      }));
       async function loadFeed() {
         if (!sb) return;
-        const { data: works } = await sb.from('works')
-          .select('*, profiles(username, display_name)')
-          .order('created_at', { ascending: false }).limit(40);
+        let q = sb.from('works').select('*, profiles(username, display_name)');
+        if (feedState.q) q = q.or(`title.ilike.%${feedState.q}%,note.ilike.%${feedState.q}%`);
+        q = feedState.sort === 'hot'
+          ? q.order('plays', { ascending: false }).order('created_at', { ascending: false }).limit(40)
+          : q.order('created_at', { ascending: false }).limit(40);
+        const { data: works } = await q;
         const list = $('feedList');
         list.innerHTML = '';
         (works || []).forEach(w => list.appendChild(workCard(w, {})));
-        if (!works || works.length === 0) list.innerHTML = '<div class="empty">还没有作品，等你来当第一个发布者 🎤</div>';
+        if (!works || works.length === 0)
+          list.innerHTML = feedState.q
+            ? '<div class="empty">没找到相关作品，换个关键词试试 🎶</div>'
+            : '<div class="empty">还没有作品，等你来当第一个发布者 🎤</div>';
       }
 
       // ---------- 我的作品 ----------
@@ -436,9 +515,9 @@ import '../styles/global.css';
           if (up.error) throw up.error;
           const ins = await sb.from('works').insert({ user_id: user.id, title, note, storage_path: path });
           if (ins.error) throw ins.error;
-          msg($('publishMsg'), '🎉 发布成功！');
+          msg($('publishMsg'), '🎉 发布成功！已跳转到社区动态');
           $('songTitle').value = ''; $('songNote').value = ''; $('songFile').value = '';
-          await loadMine();
+          location.hash = '#/feed';
         } catch (e) {
           msg($('publishMsg'), '发布失败：' + (e.message || '未知错误'), true);
         }
