@@ -42,9 +42,9 @@ export default {
   // repoId 没填时，留言板区域会提示先去 GitHub Discussions 留言
   comments: {
     repo: "qiaoshiyi/MeloMemo",
-    repoId: "",
-    category: "Announcements",
-    categoryId: "",
+    repoId: "R_kgDOVlreNw",
+    category: "General",
+    categoryId: "DIC_kwDOVlreN84DKjhx",
   },
 
   // ---------- 联系方式（留空 "" 就不显示） ----------

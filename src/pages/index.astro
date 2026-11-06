@@ -172,13 +172,33 @@ const links = [
       <div class="wrap">{Content.footer}</div>
     </footer>
 
+    <!-- 迷你播放条：点歌后跟随在底部 -->
+    <div id="mini" hidden>
+      <div class="mini-cover" id="miniCover">🎤</div>
+      <div class="mini-info">
+        <strong id="miniTitle"></strong>
+        <div class="mini-bar"><i id="miniFill"></i></div>
+      </div>
+      <button id="miniToggle" title="播放/暂停">⏸</button>
+      <button id="miniClose" title="关闭">✕</button>
+    </div>
+
+    <!-- 回到顶部 -->
+    <button id="toTop" title="回到顶部" aria-label="回到顶部">↑</button>
+
     <script>
-      // ===== 明暗主题切换 =====
+      // ===== 明暗主题切换（留言板 giscus 主题一起跟着换） =====
       const themeBtn = document.getElementById('themeBtn');
+      const syncGiscus = (t) => {
+        document.querySelectorAll('iframe.giscus-frame').forEach(f => {
+          f.contentWindow.postMessage({ giscus: { setConfig: { theme: t === 'dark' ? 'dark' : 'light' } } }, 'https://giscus.app');
+        });
+      };
       const setTheme = (t) => {
         document.documentElement.dataset.theme = t;
         try { localStorage.setItem('mm-theme', t); } catch (e) {}
         themeBtn.textContent = t === 'dark' ? '🌙' : '☀️';
+        syncGiscus(t);
       };
       setTheme(document.documentElement.dataset.theme || 'dark');
       themeBtn.addEventListener('click', () => {
@@ -196,11 +216,13 @@ const links = [
         }
       })();
 
-      // ===== 顶部进度条 =====
+      // ===== 顶部进度条 + 回到顶部按钮显隐 =====
       const bar = document.getElementById('progress');
       addEventListener('scroll', () => {
         const h = document.documentElement;
-        bar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+        const p = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+        bar.style.width = p + '%';
+        toTop.classList.toggle('show', h.scrollTop > 500);
       }, { passive: true });
 
       // ===== 滚动浮现 =====
@@ -209,16 +231,61 @@ const links = [
       }, { threshold: 0.12 });
       document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 
-      // ===== 播放管理：同一时间只播一首，播放时唱片旋转 + 均衡器 =====
+      // ===== 播放管理：同一时间只播一首；播放时唱片旋转 + 均衡器 + 迷你播放条 =====
+      const mini = document.getElementById('mini');
+      const miniTitle = document.getElementById('miniTitle');
+      const miniCover = document.getElementById('miniCover');
+      const miniFill = document.getElementById('miniFill');
+      const miniToggle = document.getElementById('miniToggle');
+      const miniClose = document.getElementById('miniClose');
+      let currentAudio = null;
+
+      const stopMini = () => { mini.hidden = true; };
+      mini.addEventListener('click', e => e.stopPropagation());
+      miniToggle.addEventListener('click', () => {
+        if (!currentAudio) return;
+        currentAudio.paused ? currentAudio.play() : currentAudio.pause();
+      });
+      miniClose.addEventListener('click', () => {
+        if (currentAudio) currentAudio.pause();
+        stopMini();
+      });
+
       document.querySelectorAll('.card:has(audio)').forEach(card => {
         const audio = card.querySelector('audio');
         audio.addEventListener('play', () => {
           document.querySelectorAll('audio').forEach(a => { if (a !== audio) a.pause(); });
           document.querySelectorAll('.playing').forEach(x => { if (x !== card) x.classList.remove('playing'); });
           card.classList.add('playing');
+          currentAudio = audio;
+          miniTitle.textContent = card.querySelector('h3')?.textContent || '正在播放';
+          const coverImg = card.querySelector('.cover img');
+          if (coverImg) {
+            miniCover.style.backgroundImage = `url(${coverImg.src})`;
+            miniCover.textContent = '';
+          } else {
+            miniCover.style.backgroundImage = '';
+            miniCover.textContent = '🎤';
+          }
+          mini.hidden = false;
+          miniToggle.textContent = '⏸';
+          miniCover.classList.add('spin');
         });
-        ['pause', 'ended'].forEach(ev => audio.addEventListener(ev, () => card.classList.remove('playing')));
+        audio.addEventListener('playing', () => { miniToggle.textContent = '⏸'; });
+        ['pause', 'ended'].forEach(ev => audio.addEventListener(ev, () => {
+          card.classList.remove('playing');
+          miniToggle.textContent = '▶';
+          miniCover.classList.remove('spin');
+        }));
+        audio.addEventListener('timeupdate', () => {
+          if (currentAudio !== audio) return;
+          miniFill.style.width = (audio.currentTime / (audio.duration || 1) * 100) + '%';
+        });
       });
+
+      // ===== 回到顶部 =====
+      const toTop = document.getElementById('toTop');
+      toTop.addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
 
       // ===== 点赞（保存在本机浏览器里） =====
       document.querySelectorAll('.like').forEach(btn => {

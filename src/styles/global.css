@@ -218,9 +218,61 @@ audio::-webkit-media-controls-panel { background: var(--card); }
 
 footer.site { padding: 34px 0 44px; text-align: center; color: var(--muted); font-size: 14px; }
 
+/* 迷你播放条 */
+#mini {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+  z-index: 60; width: min(560px, calc(100vw - 32px));
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 18px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--card-border); box-shadow: var(--shadow);
+  animation: rise .35s ease;
+}
+@keyframes rise { from { transform: translate(-50%, 14px); opacity: 0; } }
+.mini-cover {
+  width: 44px; height: 44px; border-radius: 12px; flex: none;
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+  background: linear-gradient(135deg, #2b3a67, #6c8cff 55%, #ff5e7a);
+  background-size: cover; background-position: center; color: #fff;
+}
+.mini-cover.spin { animation: spin 3.2s linear infinite; }
+.mini-info { flex: 1; min-width: 0; }
+.mini-info strong { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-bar { height: 4px; border-radius: 2px; background: var(--card-border); margin-top: 6px; overflow: hidden; }
+.mini-bar i { display: block; height: 100%; width: 0; background: var(--gradient); border-radius: 2px; transition: width .2s linear; }
+#mini button {
+  border: 1px solid var(--card-border); background: var(--card); color: var(--ink);
+  border-radius: 12px; width: 34px; height: 34px; cursor: pointer; font-size: 14px; flex: none;
+}
+#mini button:hover { background: var(--gradient); color: #fff; border-color: transparent; }
+
+/* 回到顶部 */
+#toTop {
+  position: fixed; right: 20px; bottom: 20px; z-index: 55;
+  width: 42px; height: 42px; border-radius: 50%; cursor: pointer;
+  border: 1px solid var(--card-border); background: var(--card); color: var(--ink);
+  backdrop-filter: blur(10px); font-size: 17px;
+  opacity: 0; pointer-events: none; transform: translateY(8px);
+  transition: opacity .3s, transform .3s;
+}
+#toTop.show { opacity: 1; pointer-events: auto; transform: none; }
+#toTop:hover { background: var(--gradient); color: #fff; border-color: transparent; }
+#mini ~ #toTop, #mini:not([hidden]) ~ #toTop { bottom: 84px; }
+
 /* 手机端 */
 @media (max-width: 640px) {
-  header.hero { padding: 64px 0 48px; }
-  nav a.item { font-size: 13.5px; padding: 5px 7px; }
-  .btn { padding: 11px 24px; }
+  header.hero { padding: 56px 0 44px; }
+  nav .wrap {
+    flex-wrap: wrap; height: auto; row-gap: 2px; padding: 10px 16px 8px;
+  }
+  nav .logo { width: 100%; font-size: 17px; }
+  nav .item { flex: 1 1 auto; text-align: center; font-size: 13px; padding: 7px 6px; }
+  .btn { padding: 11px 24px; font-size: 14px; }
+  .grid { grid-template-columns: 1fr; }
+  .cover { height: 170px; }
+  #mini { bottom: 12px; padding: 8px 10px; gap: 10px; }
+  #mini ~ #toTop { bottom: 76px; }
+  #toTop { right: 14px; }
 }
+
