@@ -142,6 +142,10 @@ section h2 .hl { background: var(--gradient); -webkit-background-clip: text; bac
 }
 .tagwall span:hover { color: #fff; background: var(--gradient); border-color: transparent; transform: translateY(-2px); }
 
+/* hidden 属性必须真的隐藏：.card/.whoami/#mini 都设了 display:flex，
+   否则 [hidden] 会被覆盖，导致游客提示条、播放条在登录后/空闲时还挂在页面上 */
+[hidden] { display: none !important; }
+
 /* 卡片网格 */
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
 .card {
