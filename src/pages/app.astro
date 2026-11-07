@@ -893,8 +893,15 @@ const site = 'https://melomemo.cn';
             'Invalid login credentials': '邮箱或密码不对，再检查一下',
             'Email not confirmed': '邮箱还没确认，先去收件箱点确认链接',
             'User already registered': '这个邮箱已经注册过了，直接登录吧',
+            'Email rate limit exceeded': '邮件发太勤了，等几分钟再试',
+            'Password should be at least 8 characters': '密码至少 8 位',
+            'Signups not allowed for this instance': '暂时关闭了注册',
           };
-          msg($('authMsg'), map[e.message] || (e.message || '出错了，稍后再试'), 'err');
+          const raw = (e && e.message) || '';
+          const friendly = /captcha/i.test(raw)
+            ? '人机验证没通过或已过期，重新验证一次再提交'
+            : (map[raw] || raw || '出错了，稍后再试');
+          msg($('authMsg'), friendly, 'err');
           resetCaptcha();
         } finally { $('authBtn').disabled = false; }
       });
@@ -906,7 +913,11 @@ const site = 'https://melomemo.cn';
         if (CAPTCHA_KEY && !captchaToken) { msg($('authMsg'), '先完成下面的人机验证', 'err'); return; }
         const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/app/', ...captchaOpts() });
         resetCaptcha();
-        msg($('authMsg'), error ? ('发送失败：' + error.message) : '找回邮件已发出，请去邮箱点链接设置新密码。', error ? 'err' : 'ok');
+        const eraw = error ? (error.message || '') : '';
+        const etext = /captcha/i.test(eraw)
+          ? '人机验证没通过或已过期，重新验证一次再提交'
+          : ('发送失败：' + eraw);
+        msg($('authMsg'), error ? etext : '找回邮件已发出，请去邮箱点链接设置新密码。', error ? 'err' : 'ok');
       });
 
       $('resetBtn').addEventListener('click', async () => {
