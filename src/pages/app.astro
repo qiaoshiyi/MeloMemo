@@ -65,7 +65,7 @@ const site = 'https://melomemo.cn';
             <button class="seg" data-mode="signup" role="tab" aria-selected="false">注册</button>
           </div>
           <label>邮箱 <input id="email" type="email" placeholder="you@example.com" autocomplete="email" /></label>
-          <label>密码 <input id="password" type="password" placeholder="至少 6 位" autocomplete="current-password" /></label>
+          <label>密码 <input id="password" type="password" placeholder="至少 8 位" autocomplete="current-password" /></label>
           <button id="authBtn" class="btn primary">登录</button>
           <div class="auth-links">
             <button id="forgotBtn" class="linkbtn" type="button">忘记密码？</button>
@@ -79,7 +79,7 @@ const site = 'https://melomemo.cn';
       <section id="resetView" hidden>
         <h2>🔑 设置新密码</h2>
         <div class="card auth-card">
-          <label>新密码 <input id="newPassword" type="password" placeholder="至少 6 位" autocomplete="new-password" /></label>
+          <label>新密码 <input id="newPassword" type="password" placeholder="至少 8 位" autocomplete="new-password" /></label>
           <button id="resetBtn" class="btn primary">保存新密码</button>
           <p id="resetMsg" class="msg" role="status"></p>
         </div>
@@ -111,6 +111,19 @@ const site = 'https://melomemo.cn';
               <button class="smini" data-sort="hot" type="button">最热</button>
             </div>
           </div>
+          <div class="chipsrow" id="genreRow" role="group" aria-label="按流派筛选">
+            <button class="gchip on" data-genre="" type="button">全部</button>
+            <button class="gchip" data-genre="翻唱" type="button">翻唱</button>
+            <button class="gchip" data-genre="原创" type="button">原创</button>
+            <button class="gchip" data-genre="民谣" type="button">民谣</button>
+            <button class="gchip" data-genre="流行" type="button">流行</button>
+            <button class="gchip" data-genre="摇滚" type="button">摇滚</button>
+            <button class="gchip" data-genre="说唱" type="button">说唱</button>
+            <button class="gchip" data-genre="电子" type="button">电子</button>
+            <button class="gchip" data-genre="古风" type="button">古风</button>
+            <button class="gchip" data-genre="纯音乐" type="button">纯音乐</button>
+            <button class="gchip" data-genre="其他" type="button">其他</button>
+          </div>
           <div class="guestbar card" id="guestBar" hidden>
             <span>你现在是游客，可以随便听。想发布作品或关注作者，<a href="#/login">登录 / 注册</a> 后即可。</span>
           </div>
@@ -125,6 +138,20 @@ const site = 'https://melomemo.cn';
           <div class="card form-card">
             <label>歌曲标题 <input id="songTitle" maxlength="100" placeholder="例如：《南山南》翻唱" /></label>
             <label>一句话说明（可选）<input id="songNote" maxlength="200" placeholder="翻唱 · 吉他自弹 · 2026" /></label>
+            <label>流派
+              <select id="songGenre">
+                <option value="翻唱">翻唱</option>
+                <option value="原创">原创</option>
+                <option value="民谣">民谣</option>
+                <option value="流行">流行</option>
+                <option value="摇滚">摇滚</option>
+                <option value="说唱">说唱</option>
+                <option value="电子">电子</option>
+                <option value="古风">古风</option>
+                <option value="纯音乐">纯音乐</option>
+                <option value="其他">其他</option>
+              </select>
+            </label>
             <label>音频文件 <input id="songFile" type="file" accept="audio/*" /></label>
             <p class="note">支持 MP3 / M4A / WAV / OGG，单个文件不超过 50MB。请只上传自己演唱或已获授权的作品。</p>
             <button id="publishBtn" class="btn primary" type="button">🚀 发布</button>
@@ -156,6 +183,9 @@ const site = 'https://melomemo.cn';
           <p class="muted center">
             想删除账号与全部数据？请到 <a href="../legal/#report">举报与投诉页</a> 提交，我们会核实后处理。
           </p>
+          <h3 class="sub">我喜欢的 <span id="loveCount" class="muted"></span></h3>
+          <div class="grid" id="loveList"></div>
+          <p class="muted center" id="loveEmpty" hidden>还没有喜欢过别人的作品，去社区听听看 🎧</p>
         </div>
       </section>
 
@@ -261,6 +291,15 @@ const site = 'https://melomemo.cn';
       .stats b { color: var(--ink); font-size: 15px; }
       .work-cover { height: 120px; border-radius: 14px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 40px; color: #fff; background: linear-gradient(135deg, #2b3a67, #6c8cff 55%, #ff5e7a); }
       .playing .work-cover { animation: spin 3.2s linear infinite; }
+      .work-cover { cursor: pointer; }
+      .work-cover::after {
+        content: '▶'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        background: rgba(6, 10, 22, .34); font-size: 26px; opacity: 0; transition: opacity .2s ease;
+      }
+      .card:hover .work-cover::after { opacity: 1; }
+      .card.playing .work-cover::after { content: '❚❚'; opacity: 0; }
+      .card.playing:hover .work-cover::after { opacity: 1; }
+      .mini-bar { cursor: pointer; }
       .byline { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
       .byline a { color: var(--accent-2); text-decoration: none; font-weight: 700; }
       .del { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 4px 8px; border-radius: 8px; }
@@ -280,6 +319,31 @@ const site = 'https://melomemo.cn';
       .smini { padding: 9px 16px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--muted); cursor: pointer; font-size: 14px; }
       .smini.on { background: var(--gradient); color: #fff; border-color: transparent; font-weight: 700; }
       .pager { text-align: center; margin-top: 24px; }
+      .chipsrow { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }
+      .gchip {
+        padding: 7px 15px; border-radius: 999px; cursor: pointer; font-size: 13.5px;
+        border: 1px solid var(--card-border); background: var(--card); color: var(--muted);
+        transition: transform .15s ease, background .2s ease;
+      }
+      .gchip:hover { transform: translateY(-1px); color: var(--ink); }
+      .gchip.on { background: var(--gradient); color: #fff; border-color: transparent; font-weight: 700; }
+      select {
+        background: color-mix(in srgb, var(--bg) 55%, transparent);
+        border: 1px solid var(--card-border); border-radius: 12px;
+        color: var(--ink); padding: 11px 14px; font-size: 15px; outline: none;
+      }
+      .work-genre {
+        font-size: 12px; padding: 2px 10px; border-radius: 999px; font-weight: 700;
+        background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent);
+      }
+      .card-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .love {
+        border: 1px solid var(--card-border); background: none; color: var(--muted);
+        border-radius: 999px; padding: 5px 13px; font-size: 13px; cursor: pointer;
+        transition: transform .15s ease, color .2s ease, border-color .2s ease;
+      }
+      .love:hover { transform: translateY(-1px); color: var(--accent); border-color: var(--accent); }
+      .love.on { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 700; }
       .upwrap { display: none; flex-direction: column; gap: 6px; }
       .upwrap.show { display: flex; }
       .upbar { height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--card-border) 60%, transparent); overflow: hidden; }
@@ -367,8 +431,30 @@ const site = 'https://melomemo.cn';
       let currentAudio = null;
       miniToggle.addEventListener('click', () => { if (currentAudio) currentAudio.paused ? currentAudio.play() : currentAudio.pause(); });
       miniClose.addEventListener('click', () => { if (currentAudio) currentAudio.pause(); mini.hidden = true; });
+      // 播放条上的进度可以点、可以拖（做成拖拽滑块）
+      const seekAt = e => {
+        if (!currentAudio || !currentAudio.duration) return;
+        const bar = miniFill.parentElement;
+        const r = bar.getBoundingClientRect();
+        const x = Math.min(Math.max(e.clientX - r.left, 0), r.width);
+        currentAudio.currentTime = (x / r.width) * currentAudio.duration;
+        miniFill.style.width = (x / r.width * 100) + '%';
+      };
+      miniFill.parentElement.addEventListener('click', seekAt);
+      miniFill.parentElement.addEventListener('pointerdown', e => {
+        seekAt(e);
+        const move = ev => seekAt(ev);
+        const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
+        addEventListener('pointermove', move); addEventListener('pointerup', up);
+      });
 
       function wirePlay(card, audio, title, coverUrl, author) {
+        // 点封面 = 播放 / 暂停
+        const cover = card.querySelector('.work-cover');
+        if (cover) {
+          cover.setAttribute('title', '点击播放或暂停');
+          cover.addEventListener('click', () => { if (audio.paused) audio.play(); else audio.pause(); });
+        }
         audio.addEventListener('play', () => {
           document.querySelectorAll('audio').forEach(a => { if (a !== audio) a.pause(); });
           currentAudio = audio;
@@ -396,27 +482,68 @@ const site = 'https://melomemo.cn';
           miniFill.style.width = (audio.currentTime / (audio.duration || 1) * 100) + '%';
           miniTime.textContent = fmtT(audio.currentTime) + ' / ' + fmtT(audio.duration);
         });
+        // 空格键暂停 / 继续（不在输入框里时）
+        audio.dataset.wired = '1';
       }
+
+      // 全局空格键控制当前播放
+      addEventListener('keydown', e => {
+        if (e.code !== 'Space' || !currentAudio) return;
+        const t = e.target;
+        if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
+        e.preventDefault();
+        currentAudio.paused ? currentAudio.play() : currentAudio.pause();
+      });
+
+      // ---------- 收藏（喜欢）状态 ----------
+      const lovedSet = new Set();
 
       // ---------- 作品卡片模板 ----------
       function workCard(w, opts = {}) {
         const audioUrl = sb.storage.from('songs').getPublicUrl(w.storage_path).data.publicUrl;
         const who = w.profiles || {};
+        // 每首作品一个稳定的色相，让封面不再千篇一律
+        let hue = 0;
+        for (const ch of String(w.id || w.title || '')) hue = (hue * 31 + ch.charCodeAt(0)) % 360;
         const div = document.createElement('div');
+        const lc = Number((w.loves && w.loves[0] && w.loves[0].count) || 0);
         div.className = 'card';
         div.innerHTML = `
-          <div class="work-cover" aria-hidden="true">🎤</div>
+          <div class="work-cover" aria-hidden="true" style="background:linear-gradient(135deg,hsl(${hue} 62% 32%),hsl(${(hue + 48) % 360} 74% 52%),hsl(${(hue + 110) % 360} 78% 62%))">🎤</div>
           <div class="row">
             <h3 style="margin:0;font-size:16.5px;">${esc(w.title)}</h3>
             ${opts.ownerView ? `<button class="del" data-id="${esc(w.id)}" title="删除作品" aria-label="删除作品《${esc(w.title)}》" type="button">🗑</button>` : ''}
           </div>
           ${w.note ? `<span class="note">${esc(w.note)}</span>` : ''}
           ${!opts.ownerView ? `<div class="byline">由 <a href="#/u/${esc(who.username || '')}">${esc(who.display_name || who.username || '神秘音乐人')}</a>${opts.mutual ? '<span class="mutual">互相关注</span>' : ''}</div>` : ''}
-          <span class="note">▶ ${Number(w.plays || 0)} 次播放</span>
+          <div class="card-foot">
+            ${w.genre ? `<span class="work-genre">${esc(w.genre)}</span>` : ''}
+            <span class="note" style="margin:0;">▶ ${Number(w.plays || 0)} 次播放</span>
+            <button class="love${lovedSet.has(w.id) ? ' on' : ''}" type="button" data-love="${esc(w.id)}" aria-pressed="${lovedSet.has(w.id)}" aria-label="喜欢《${esc(w.title)}》">♥ <span>${lovedSet.has(w.id) ? '已喜欢' : '喜欢'}</span>${lc ? ` <b>${lc}</b>` : ''}</button>
+          </div>
           <audio controls preload="none" src="${esc(audioUrl)}" data-work-id="${esc(w.id)}"></audio>
         `;
         wirePlay(div, div.querySelector('audio'), w.title, null,
           (w.profiles && (w.profiles.display_name || w.profiles.username)) || '');
+        div.querySelector('.love').addEventListener('click', async () => {
+          if (!sb) return;
+          if (!user) { location.hash = '#/login'; return; }
+          const btn = div.querySelector('.love'), wid = w.id, on = lovedSet.has(wid);
+          btn.disabled = true;
+          const res = on
+            ? await sb.from('loves').delete().eq('user_id', user.id).eq('work_id', wid)
+            : await sb.from('loves').insert({ user_id: user.id, work_id: wid });
+          btn.disabled = false;
+          if (res.error) { alert('操作失败：' + res.error.message); return; }
+          if (on) lovedSet.delete(wid); else lovedSet.add(wid);
+          const now = lovedSet.has(wid);
+          btn.classList.toggle('on', now);
+          btn.setAttribute('aria-pressed', String(now));
+          btn.querySelector('span').textContent = now ? '已喜欢' : '喜欢';
+          const b = btn.querySelector('b');
+          if (b) b.textContent = String(Math.max(0, Number(b.textContent || 0) + (now ? 1 : -1)));
+          else if (now) btn.insertAdjacentHTML('beforeend', ' <b>1</b>');
+        });
         const del = div.querySelector('.del');
         if (del) del.addEventListener('click', async () => {
           if (!sb || !confirm(`确定删除《${w.title}》吗？删除后不可恢复。`)) return;
@@ -492,10 +619,24 @@ const site = 'https://melomemo.cn';
         if (!user) { showViews({ auth: true }); return; }
         showViews({ shell: true });
         if (view === 'publish') { tabStyle('publish'); publishView.hidden = false; await loadMine(); }
-        else if (view === 'me') { tabStyle('me'); meView.hidden = false; }
+        else if (view === 'me') { tabStyle('me'); meView.hidden = false; await loadLoves(); }
         else { tabStyle('feed'); feedView.hidden = false; await loadFeed(); }
       }
       addEventListener('hashchange', route);
+
+      // ---------- 顶部三个 tab 可点（此前只有样式，没有点击） ----------
+      document.querySelectorAll('.tabs3 button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const v = btn.dataset.view;
+          if (v === 'feed') {
+            // 已经在动态页时点一次也强制回顶刷新，避免 hash 不变导致无反应
+            if (location.hash === '#/feed' || location.hash === '' ) { route(); }
+            else location.hash = '#/feed';
+          } else {
+            location.hash = '#/' + v;
+          }
+        });
+      });
 
       // ---------- 登录 / 注册 / 找回密码 ----------
       let signupMode = false;
@@ -546,7 +687,7 @@ const site = 'https://melomemo.cn';
 
       $('resetBtn').addEventListener('click', async () => {
         const pwd = $('newPassword').value;
-        if (pwd.length < 6) { msg($('resetMsg'), '密码至少 6 位', 'err'); return; }
+        if (pwd.length < 8) { msg($('resetMsg'), '密码至少 8 位', 'err'); return; }
         if (!sb) return;
         const { error } = await sb.auth.updateUser({ password: pwd });
         if (error) { msg($('resetMsg'), '设置失败：' + error.message, 'err'); return; }
@@ -648,7 +789,7 @@ const site = 'https://melomemo.cn';
           $('pfFollowers').textContent = nf.count ?? 0;
         };
 
-        const { data: works } = await sb.from('works').select('*, profiles(username, display_name)').eq('user_id', pf.id).order('created_at', { ascending: false });
+        const { data: works } = await sb.from('works').select('*, profiles!works_user_id_fkey(username, display_name), loves(count)').eq('user_id', pf.id).order('created_at', { ascending: false });
         showViews({ profile: true });
         document.querySelectorAll('.tabs3 button').forEach(b => b.classList.remove('on'));
         renderWorkList($('pfWorksList'), works, {});
@@ -656,9 +797,9 @@ const site = 'https://melomemo.cn';
         return true;
       }
 
-      // ---------- 社区动态（搜索 + 最新/最热 + 加载更多） ----------
+      // ---------- 社区动态（搜索 + 流派 + 最新/最热 + 加载更多） ----------
       const PAGE = 12;
-      const feedState = { q: '', sort: 'new', page: 0, done: false };
+      const feedState = { q: '', sort: 'new', genre: '', page: 0, done: false };
       const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
       const safeQuery = q => q.replace(/[,()%\\"]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
 
@@ -675,14 +816,22 @@ const site = 'https://melomemo.cn';
         loadFeed(true);
       }));
       $('feedMore').addEventListener('click', () => { feedState.page += 1; loadFeed(false); });
+      document.querySelectorAll('.gchip').forEach(b => b.addEventListener('click', () => {
+        document.querySelectorAll('.gchip').forEach(x => x.classList.remove('on'));
+        b.classList.add('on');
+        feedState.genre = b.dataset.genre || '';
+        feedState.page = 0; feedState.done = false;
+        loadFeed(true);
+      }));
 
       async function loadFeed(reset) {
         if (!sb) return;
         const list = $('feedList');
         if (reset) { list.innerHTML = '<div class="empty">加载中…</div>'; feedState.page = 0; feedState.done = false; }
         const from = feedState.page * PAGE, to = from + PAGE - 1;
-        let q = sb.from('works').select('*, profiles(username, display_name)', { count: 'exact' });
+        let q = sb.from('works').select('*, profiles!works_user_id_fkey(username, display_name), loves(count)', { count: 'exact' });
         if (feedState.q) q = q.or(`title.ilike.%${feedState.q}%,note.ilike.%${feedState.q}%`);
+        if (feedState.genre) q = q.eq('genre', feedState.genre);
         q = feedState.sort === 'hot'
           ? q.order('plays', { ascending: false }).order('created_at', { ascending: false }).range(from, to)
           : q.order('created_at', { ascending: false }).range(from, to);
@@ -698,7 +847,9 @@ const site = 'https://melomemo.cn';
         if (reset && rows.length === 0) {
           list.innerHTML = feedState.q
             ? '<div class="empty">没找到相关作品，换个关键词试试 🎶</div>'
-            : '<div class="empty">还没有作品，等你来当第一个发布者 🎤<br><a href="#/publish">去发布</a></div>';
+            : (feedState.genre
+              ? `<div class="empty">这个流派还没有作品，等第一个「${esc(feedState.genre)}」出现 🎤<br><a href="#/publish">去发布</a></div>`
+              : '<div class="empty">还没有作品，等你来当第一个发布者 🎤<br><a href="#/publish">去发布</a></div>');
         }
         const shown = from + rows.length;
         feedState.done = shown >= (count ?? 0) || rows.length < PAGE;
@@ -711,6 +862,19 @@ const site = 'https://melomemo.cn';
         const { data: works, count } = await sb.from('works').select('*', { count: 'exact' }).eq('user_id', user.id).order('created_at', { ascending: false });
         $('myCount').textContent = `共 ${count ?? 0} 首`;
         renderWorkList($('mineList'), works, { ownerView: true });
+      }
+
+      // ---------- 我喜欢的 ----------
+      async function loadLoves() {
+        if (!sb || !user) return;
+        const { data } = await sb.from('loves')
+          .select('work_id, created_at, works(id, title, note, genre, plays, storage_path, user_id, profiles!works_user_id_fkey(username, display_name), loves(count))')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        const works = (data || []).map(x => x.works).filter(Boolean);
+        $('loveCount').textContent = works.length ? `共 ${works.length} 首` : '';
+        $('loveEmpty').hidden = works.length > 0;
+        renderWorkList($('loveList'), works, {});
       }
 
       // ---------- 发布（真实进度直传：百分比 / 已传大小 / 速度 / 预计剩余） ----------
@@ -736,6 +900,7 @@ const site = 'https://melomemo.cn';
         if (!sb || !user) { location.hash = '#/login'; return; }
         const title = $('songTitle').value.trim();
         const note = $('songNote').value.trim();
+        const genre = $('songGenre').value || '其他';
         const file = $('songFile').files[0];
         msg($('publishMsg'), '');
         if (!title || !file) { msg($('publishMsg'), '歌曲标题和音频文件都要有哦', 'err'); return; }
@@ -777,7 +942,7 @@ const site = 'https://melomemo.cn';
             }
           }
           if (!ok) throw (lastErr || new Error('上传失败'));
-          const ins = await sb.from('works').insert({ user_id: user.id, title, note, storage_path: path });
+          const ins = await sb.from('works').insert({ user_id: user.id, title, note, storage_path: path, genre });
           if (ins.error) {
             // 元数据写入失败：清掉刚上传的音频，避免留下孤儿文件
             try { await sb.storage.from('songs').remove([path]); } catch (e) {}
@@ -877,6 +1042,8 @@ const site = 'https://melomemo.cn';
           if (pf) setShell(pf);
           const { data: f } = await sb.from('follows').select('following_id').eq('follower_id', user.id);
           (f || []).forEach(x => followingSet.add(x.following_id));
+          const { data: lv } = await sb.from('loves').select('work_id').eq('user_id', user.id);
+          (lv || []).forEach(x => lovedSet.add(x.work_id));
         }
         syncAuthNav();
         sb.auth.onAuthStateChange((event, session) => {

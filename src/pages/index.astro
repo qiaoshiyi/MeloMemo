@@ -399,7 +399,7 @@ const links = [
         const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
         try {
           const res = await fetch(
-            `${cfg.url}/rest/v1/works?select=id,title,note,storage_path,plays,created_at,profiles(username,display_name)&order=created_at.desc&limit=6`,
+            `${cfg.url}/rest/v1/works?select=id,title,note,storage_path,plays,created_at,profiles!works_user_id_fkey(username,display_name)&order=created_at.desc&limit=6`,
             { headers: { apikey: cfg.anonKey, Accept: 'application/json' } }
           );
           if (!res.ok) throw new Error('HTTP ' + res.status);

@@ -98,3 +98,27 @@ create policy "songs_upload_own" on storage.objects
   for insert with check (bucket_id = 'songs' and auth.role() = 'authenticated');
 create policy "songs_delete_own" on storage.objects
   for delete using (bucket_id = 'songs' and auth.role() = 'authenticated');
+
+-- ============================================================
+--  2026-11 追加：流派字段 + 喜欢表（已在线上执行）
+-- ============================================================
+alter table public.works add column if not exists genre text not null default '';
+create index if not exists works_genre_idx on public.works (genre);
+alter table public.works drop constraint if exists works_title_len;
+alter table public.works add constraint works_title_len check (char_length(title) between 1 and 100);
+alter table public.works drop constraint if exists works_note_len;
+alter table public.works add constraint works_note_len check (char_length(note) <= 200);
+alter table public.works drop constraint if exists works_genre_len;
+alter table public.works add constraint works_genre_len check (char_length(genre) <= 20);
+
+create table if not exists public.loves (
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  work_id    uuid not null references public.works(id)    on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, work_id)
+);
+create index if not exists loves_work_idx on public.loves (work_id);
+alter table public.loves enable row level security;
+create policy "loves_public_read" on public.loves for select using (true);
+create policy "loves_insert_own"  on public.loves for insert with check (auth.uid() = user_id);
+create policy "loves_delete_own"  on public.loves for delete using (auth.uid() = user_id);
