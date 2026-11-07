@@ -197,6 +197,7 @@ const site = 'https://melomemo.cn';
           <a href="#/feed">去社区看看</a>
         </div>
         <div class="card profile-card" id="pfCard">
+          <div class="pf-banner" id="pfBanner" aria-hidden="true"></div>
           <div class="mini-avatar big" id="pfAvatar">🎵</div>
           <div class="pf-head">
             <h2 id="pfDisplay"></h2>
@@ -284,7 +285,16 @@ const site = 'https://melomemo.cn';
       .mini-timerow { display: flex; align-items: center; gap: 8px; }
       .mini-timerow .mini-bar { flex: 1; }
       .mini-time { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
-      .profile-card { flex-direction: row; align-items: center; gap: 16px; max-width: 640px; margin: 0 auto 22px; flex-wrap: wrap; }
+      .profile-card { flex-direction: row; align-items: center; gap: 16px; max-width: 640px; margin: 0 auto 22px; flex-wrap: wrap; position: relative; overflow: hidden; padding-top: 22px; }
+      .pf-banner {
+        position: absolute; left: 0; right: 0; top: 0; height: 78px;
+        background: var(--gradient); opacity: .9;
+        -webkit-mask-image: linear-gradient(#000, transparent); mask-image: linear-gradient(#000, transparent);
+      }
+      .profile-card > *:not(.pf-banner) { position: relative; z-index: 1; }
+      .pf-stats { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+      .pf-stats span { padding: 3px 11px; border-radius: 999px; border: 1px solid var(--card-border); font-size: 12.5px; color: var(--muted); }
+      .pf-stats b { color: var(--ink); font-size: 14px; margin-right: 2px; }
       .pf-head { flex: 1; min-width: 200px; }
       .pf-head h2 { margin: 0 0 2px; font-size: 22px; }
       .pf-head p { margin: 4px 0; font-size: 14px; }
@@ -342,6 +352,8 @@ const site = 'https://melomemo.cn';
       .cmt-btn { border: 1px solid var(--card-border); background: transparent; color: var(--muted); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; cursor: pointer; }
       .cmt-btn:hover { color: var(--ink); border-color: color-mix(in srgb, var(--accent-2) 60%, var(--card-border)); }
       .cmt-btn b { font-weight: 600; }
+      .cmt-btn.share { padding: 3px 9px; }
+      .cmt-btn.share:hover { color: var(--accent-2); }
       .cmt { border-top: 1px dashed var(--card-border); margin-top: 10px; padding-top: 10px; }
       .cmt-list { list-style: none; padding: 0; margin: 0 0 10px; display: flex; flex-direction: column; gap: 10px; max-height: 280px; overflow-y: auto; }
       .cmt-item { position: relative; font-size: 14px; line-height: 1.6; }
@@ -401,6 +413,26 @@ const site = 'https://melomemo.cn';
         nav .item { flex: 1 1 auto; text-align: center; font-size: 13px; padding: 7px 6px; }
         .profile-card { flex-direction: column; align-items: flex-start; }
         .app { padding: 24px 16px 70px; }
+        .tabs3 { gap: 4px; }
+        .tabs3 button { padding: 9px 12px; font-size: 13px; flex: 1; }
+        .grid { grid-template-columns: 1fr; gap: 14px; }
+        .work-cover { height: 150px; }
+        .card { padding: 14px; }
+        #mini { bottom: 10px; width: calc(100vw - 20px); padding: 8px 10px; gap: 8px; }
+        .mini-cover { width: 38px; height: 38px; }
+        .mini-time { display: none; }
+        .pf-actions { width: 100%; }
+        .pf-actions .btn { flex: 1; }
+        .cmt-form .btn { padding: 8px 12px; }
+        h2 { font-size: 22px; }
+      }
+      @media (min-width: 641px) and (max-width: 900px) {
+        .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .profile-card { max-width: 100%; }
+      }
+      /* 触屏没有 hover：播放遮罩常显一点点，避免看不出可点 */
+      @media (hover: none) {
+        .card:hover .work-cover::after { opacity: .55; }
       }
     </style>
 
@@ -633,6 +665,7 @@ const site = 'https://melomemo.cn';
             <span class="note" style="margin:0;">▶ ${Number(w.plays || 0)} 次播放</span>
             <button class="love${lovedSet.has(w.id) ? ' on' : ''}" type="button" data-love="${esc(w.id)}" aria-pressed="${lovedSet.has(w.id)}" aria-label="喜欢《${esc(w.title)}》">♥ <span>${lovedSet.has(w.id) ? '已喜欢' : '喜欢'}</span>${lc ? ` <b>${lc}</b>` : ''}</button>
             <button class="cmt-btn" type="button" data-cmt="${esc(w.id)}" aria-expanded="false">💬 评论${cc ? ` <b>${cc}</b>` : ''}</button>
+            <button class="cmt-btn share" type="button" data-share="${esc(who.username || '')}" aria-label="复制《${esc(w.title)}》的链接">🔗</button>
           </div>
           <div class="cmt" data-cmt-box="${esc(w.id)}" hidden></div>
           <audio controls preload="none" src="${esc(audioUrl)}" data-work-id="${esc(w.id)}"></audio>
@@ -658,6 +691,24 @@ const site = 'https://melomemo.cn';
           if (b) b.textContent = String(Math.max(0, Number(b.textContent || 0) + (now ? 1 : -1)));
           else if (now) btn.insertAdjacentHTML('beforeend', ' <b>1</b>');
         });
+        // ---------- 分享：复制作者主页链接 ----------
+        div.querySelector('.share').addEventListener('click', async e => {
+          e.stopPropagation();
+          const uname = who.username;
+          const link = uname ? `${location.origin}/app/#/u/${uname}` : location.href;
+          try {
+            if (navigator.share) { await navigator.share({ title: w.title, text: `来听《${w.title}》`, url: link }); return; }
+            await navigator.clipboard.writeText(link);
+            toast('链接已复制，去分享给朋友吧 🔗', 'ok');
+          } catch (err) {
+            const ta = document.createElement('textarea');
+            ta.value = link; document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); toast('链接已复制 🔗', 'ok'); }
+            catch (e2) { toast('复制失败，手动复制：' + link, 'err'); }
+            ta.remove();
+          }
+        });
+
         // ---------- 站内评论 ----------
         const cmtBtn = div.querySelector('.cmt-btn'), cmtBox = div.querySelector('.cmt');
         cmtBtn.addEventListener('click', async () => {
@@ -884,6 +935,13 @@ const site = 'https://melomemo.cn';
           const back = await sb.from('follows').select('follower_id').eq('following_id', user.id).eq('follower_id', pf.id).maybeSingle();
           mutual = iFollow && !!back.data;
         }
+        // 每个主页一条专属渐变横幅，颜色由用户名决定
+        const banner = $('pfBanner');
+        if (banner) {
+          let h = 0;
+          for (const ch of String(pf.username || '')) h = (h * 31 + ch.charCodeAt(0)) % 360;
+          banner.style.background = `linear-gradient(120deg,hsl(${h} 68% 34%),hsl(${(h + 52) % 360} 74% 52%) 55%,hsl(${(h + 118) % 360} 80% 62%))`;
+        }
         $('pfDisplay').textContent = pf.display_name || pf.username;
         viewingUsername = pf.username;
         $('pfHandle').textContent = '@' + pf.username;
@@ -939,6 +997,16 @@ const site = 'https://melomemo.cn';
         loadFeed(true);
       }));
       $('feedMore').addEventListener('click', () => { feedState.page += 1; loadFeed(false); });
+      // 键盘党：按 / 直接跳到搜索框，Esc 清空
+      document.addEventListener('keydown', e => {
+        const tag = (e.target.tagName || '').toLowerCase();
+        if (e.key === '/' && tag !== 'input' && tag !== 'textarea') {
+          const s = $('feedSearch');
+          const view = $('feedView');
+          if (s && view && !view.hidden) { e.preventDefault(); s.focus(); s.select(); }
+        }
+        if (e.key === 'Escape' && document.activeElement === $('feedSearch')) { $('feedSearch').value = ''; feedState.q = ''; loadFeed(true); }
+      });
       document.querySelectorAll('.gchip').forEach(b => b.addEventListener('click', () => {
         document.querySelectorAll('.gchip').forEach(x => x.classList.remove('on'));
         b.classList.add('on');
@@ -990,6 +1058,7 @@ const site = 'https://melomemo.cn';
         if (feedState.q) parts.push(`关键词「${feedState.q}」`);
         if (feedState.genre) parts.push(`流派「${feedState.genre}」`);
         parts.push(`${count ?? rows.length} 首作品`);
+        if (feedState.sort === 'hot') parts.unshift('🔥 按播放量');
         $('feedStats').textContent = '🎧 ' + parts.join(' · ');
       }
 
