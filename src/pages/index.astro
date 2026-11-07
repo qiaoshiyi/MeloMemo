@@ -20,6 +20,7 @@ const desc = Content.tagline || Content.slogan;
 const links = [
   { href: '#features', label: '怎么玩' },
   { href: '#latest', label: '最新作品' },
+  { href: '#discover', label: '发现音乐人' },
   songs.length > 0 && { href: '#songs', label: `听 ${Content.name}` },
   projects.length > 0 && { href: '#projects', label: '作品' },
   { href: '#comments', label: '留言板' },
@@ -88,7 +89,7 @@ const links = [
       <div class="wrap">
         <a class="logo" href="#top">🎶 MeloMemo</a>
         {links.map(l => <a class="item" href={l.href}>{l.label}</a>)}
-        <a class="item join" href="app/">🎤 进入社区</a>
+        <a class="item join" href="app/#/feed">🎤 进入社区</a>
         <button id="themeBtn" type="button" title="切换明暗主题" aria-label="切换明暗主题">🌙</button>
       </div>
     </nav>
@@ -105,9 +106,10 @@ const links = [
         <p class="tagline">{Content.tagline}</p>
         <div class="cta">
           <a class="btn primary" href="app/#/feed">🎧 去听大家唱的歌</a>
-          <a class="btn ghost" href="app/">🚀 注册并发布你的作品</a>
+          <a class="btn ghost" href="app/#/login">🚀 注册并发布你的作品</a>
         </div>
         <p class="hero-note">不用下载 App，一首歌的时间就能交到同好。</p>
+        <div class="live-stats" id="liveStats" hidden aria-live="polite"></div>
       </div>
     </header>
 
@@ -134,6 +136,15 @@ const links = [
         </div>
         <div class="grid" id="latestList" aria-live="polite"></div>
         <p class="note" id="latestEmpty" hidden>还没有人上传作品，等你来当第一个 🎤</p>
+      </section>
+
+      <section id="discover" class="reveal">
+        <div class="sec-head">
+          <h2>🧭 认识一下这里的人</h2>
+          <a class="more" href="app/#/discover">发现音乐人 →</a>
+        </div>
+        <p class="lead">唱歌的人比歌单更值得翻。按作品数、被关注数排一排，点进去就能听。</p>
+        <div class="grid" id="homePeople" aria-live="polite"></div>
       </section>
 
       {songs.length > 0 && (
@@ -283,6 +294,27 @@ const links = [
       .byline { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
       .byline a { color: var(--accent-2); text-decoration: none; font-weight: 700; }
       .work-meta { color: var(--muted); font-size: 12.5px; }
+      /* 实时社区数据 */
+      .live-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 26px 0 0; }
+      .live-stats .st { min-width: 92px; padding: 9px 16px; border-radius: 14px; border: 1px solid var(--card-border); background: color-mix(in srgb, var(--card) 70%, transparent); backdrop-filter: blur(8px); }
+      .live-stats .st b { display: block; font-size: 20px; line-height: 1.2; color: var(--ink); }
+      .live-stats .st span { font-size: 12px; color: var(--muted); }
+      .work-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 6px; }
+      .work-badges i { font-style: normal; font-size: 11.5px; color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 12%, transparent); border-radius: 999px; padding: 2px 9px; }
+      .work-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+      .work-foot a { color: var(--accent-2); text-decoration: none; font-weight: 600; }
+      .work-cover { cursor: pointer; }
+      .work-cover::after { content: '▶'; position: absolute; inset: 0; display: grid; place-items: center; font-size: 34px; color: #fff; background: rgba(11,16,32,.28); opacity: 0; transition: opacity .18s ease; }
+      .card.playing .work-cover::after { content: '❚❚'; opacity: 1; }
+      .work-cover:hover::after { opacity: .9; }
+      .home-person { display: flex; gap: 12px; align-items: center; text-decoration: none; color: inherit; }
+      .home-person .mini-avatar { flex: none; }
+      .home-person .hp-info { min-width: 0; }
+      .home-person .hp-name { display: block; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .home-person .hp-handle { display: block; font-size: 12.5px; color: var(--muted); }
+      .home-person .hp-nums { display: block; font-size: 12px; color: var(--muted); margin-top: 6px; }
+      .home-person .hp-nums b { color: var(--ink); }
+      @media (max-width: 640px) { .live-stats .st { min-width: 76px; padding: 8px 12px; } .live-stats .st b { font-size: 17px; } }
     </style>
 
     <script is:inline src="config.js"></script>
@@ -360,7 +392,11 @@ const links = [
         if (!audio) return;
         const title = card.querySelector('h3')?.textContent || '正在播放';
         const author = card.dataset.author || '';
+        const cover = card.querySelector('.work-cover');
         const coverUrl = card.dataset.cover || '';
+        const coverBg = cover ? getComputedStyle(cover).backgroundImage : '';
+        // 点封面即可播放 / 暂停（和社区页保持一致）
+        if (cover) cover.addEventListener('click', () => { audio.paused ? audio.play() : audio.pause(); });
         audio.addEventListener('play', () => {
           document.querySelectorAll('audio').forEach(a => { if (a !== audio) a.pause(); });
           document.querySelectorAll('.playing').forEach(x => x.classList.remove('playing'));
@@ -369,7 +405,8 @@ const links = [
           miniTitle.textContent = title;
           miniAuthor.textContent = author ? '🎤 ' + author : '';
           miniTime.textContent = '0:00 / ' + fmtT(audio.duration);
-          if (coverUrl) { miniCoverLabel.style.backgroundImage = `url("${coverUrl}")`; miniCoverLabel.textContent = ''; }
+          if (coverBg && coverBg !== 'none') { miniCoverLabel.style.backgroundImage = coverBg; miniCoverLabel.textContent = ''; }
+          else if (coverUrl) { miniCoverLabel.style.backgroundImage = `url("${coverUrl}")`; miniCoverLabel.textContent = ''; }
           else { miniCoverLabel.style.backgroundImage = ''; miniCoverLabel.textContent = '🎤'; }
           mini.hidden = false;
           miniToggle.textContent = '⏸';
@@ -395,35 +432,81 @@ const links = [
         const sec = document.getElementById('latest');
         const list = document.getElementById('latestList');
         const empty = document.getElementById('latestEmpty');
-        if (!cfg.url || !cfg.anonKey || !sec) return;
+        const stats = document.getElementById('liveStats');
+        const peopleBox = document.getElementById('homePeople');
+        if (!cfg.url || !cfg.anonKey) return;
         const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        const H = { apikey: cfg.anonKey, Accept: 'application/json' };
+        const jget = async u => { const r = await fetch(u, { headers: H }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); };
+        const mmss = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+        const hueOf = id => { let h = 0; for (const ch of String(id || '')) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
+        const grad = h => `linear-gradient(135deg,hsl(${h} 62% 32%),hsl(${(h + 48) % 360} 74% 52%),hsl(${(h + 110) % 360} 78% 62%))`;
+
+        // 全站实时统计（一次 RPC 拿全，失败就安静不显示）
+        if (stats) {
+          jget(`${cfg.url}/rest/v1/rpc/site_stats`).then(rows => {
+            const s = rows?.[0]; if (!s) return;
+            stats.innerHTML = [
+              [s.works_count, '首作品'], [s.people_count, '位音乐人'],
+              [s.loves_count, '次喜欢'], [s.comments_count, '条留言'],
+            ].map(([n, label]) => `<div class="st"><b>${Number(n || 0)}</b><span>${label}</span></div>`).join('');
+            stats.hidden = false;
+          }).catch(() => {});
+        }
+
+        // 最新作品：带上流派 / 时长 / 喜欢数 / 评论数
         try {
-          const res = await fetch(
-            `${cfg.url}/rest/v1/works?select=id,title,note,storage_path,plays,created_at,profiles!works_user_id_fkey(username,display_name)&order=created_at.desc&limit=6`,
-            { headers: { apikey: cfg.anonKey, Accept: 'application/json' } }
+          const works = await jget(
+            `${cfg.url}/rest/v1/works?select=id,title,note,genre,duration,plays,created_at,storage_path,profiles!works_user_id_fkey(username,display_name),loves(count),comments(count)&order=created_at.desc&limit=6`
           );
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const works = await res.json();
-          sec.hidden = false;
-          if (!works.length) { empty.hidden = false; return; }
-          list.innerHTML = works.map(w => {
-            const who = w.profiles || {};
-            const url = `${cfg.url}/storage/v1/object/public/songs/${String(w.storage_path).split('/').map(encodeURIComponent).join('/')}`;
-            let hue = 0;
-            for (const ch of String(w.id || w.title || '')) hue = (hue * 31 + ch.charCodeAt(0)) % 360;
-            return `
-              <div class="card" data-author="${esc(who.display_name || who.username || '')}">
-                <div class="work-cover" aria-hidden="true" style="background:linear-gradient(135deg,hsl(${hue} 62% 32%),hsl(${(hue + 48) % 360} 74% 52%),hsl(${(hue + 110) % 360} 78% 62%))">🎤</div>
+          if (sec) sec.hidden = false;
+          if (!works.length) { if (empty) empty.hidden = false; }
+          else if (list) {
+            list.innerHTML = works.map(w => {
+              const who = w.profiles || {};
+              const url = `${cfg.url}/storage/v1/object/public/songs/${String(w.storage_path).split('/').map(encodeURIComponent).join('/')}`;
+              const uname = who.username || '';
+              const loves = Number(w.loves?.[0]?.count || 0), cmts = Number(w.comments?.[0]?.count || 0);
+              const badges = [
+                w.genre ? `<i>${esc(w.genre)}</i>` : '',
+                Number(w.duration) > 0 ? `<i>${mmss(w.duration)}</i>` : '',
+              ].filter(Boolean).join('');
+              return `
+              <div class="card" data-author="${esc(who.display_name || uname || '')}">
+                <div class="work-cover" style="background:${grad(hueOf(w.id))}" title="点击播放 / 暂停">🎤</div>
                 <div class="row"><h3>${esc(w.title)}</h3></div>
                 ${w.note ? `<span class="note">${esc(w.note)}</span>` : ''}
-                <div class="byline">by <a href="app/#/u/${esc(who.username || '')}">${esc(who.display_name || who.username || '神秘音乐人')}</a></div>
-                <span class="work-meta">▶ ${w.plays || 0} 次播放</span>
+                ${badges ? `<div class="work-badges">${badges}</div>` : ''}
+                <div class="work-foot">
+                  <span>by <a href="app/#/u/${esc(uname)}">${esc(who.display_name || uname || '神秘音乐人')}</a></span>
+                  <span>▶ ${w.plays || 0} · ♥ ${loves} · 💬 ${cmts}</span>
+                </div>
                 <audio controls preload="none" src="${esc(url)}" data-work-id="${esc(w.id)}"></audio>
               </div>`;
-          }).join('');
-          list.querySelectorAll('.card').forEach(wireCard);
+            }).join('');
+            list.querySelectorAll('.card').forEach(wireCard);
+          }
         } catch (e) {
-          sec.hidden = true; // 拉不到就安静隐藏，不影响落地页
+          if (sec) sec.hidden = true; // 拉不到就安静隐藏，不影响落地页
+        }
+
+        // 首页推荐几位音乐人（游客可见，走公开 RPC）
+        if (peopleBox) {
+          try {
+            const rows = await jget(`${cfg.url}/rest/v1/rpc/discover_people?p_q=&p_limit=6&p_offset=0`);
+            const shown = (rows || []).filter(p => Number(p.works_count) > 0).slice(0, 3);
+            if (shown.length) {
+              peopleBox.innerHTML = shown.map(p => {
+                const name = p.display_name || p.username || '神秘音乐人';
+                const h = hueOf(p.username);
+                return `<a class="card home-person" href="app/#/u/${esc(p.username)}">
+                  <span class="mini-avatar" style="width:48px;height:48px;font-size:20px;background:${grad(h)};color:#fff">${esc(name.slice(0, 1))}</span>
+                  <span class="hp-info"><span class="hp-name">${esc(name)}</span><span class="hp-handle">@${esc(p.username)}</span>
+                  <span class="hp-nums"><b>${p.works_count ?? 0}</b> 首作品 · <b>${p.followers_count ?? 0}</b> 位粉丝</span></span>
+                </a>`;
+              }).join('');
+            }
+          } catch (e) { /* 安静降级 */ }
         }
       })();
     </script>

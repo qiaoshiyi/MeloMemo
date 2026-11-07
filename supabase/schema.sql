@@ -215,3 +215,17 @@ $fn$;
 -- 新建函数默认把 EXECUTE 给了 PUBLIC（anon 也能调），必须显式收回再只授登录用户
 revoke execute on function public.my_notices(int) from public, anon;
 grant execute on function public.my_notices(int) to authenticated;
+
+-- 首页实时统计：一次拿全站作品 / 音乐人 / 喜欢 / 留言数（公开只读）
+create or replace function public.site_stats()
+returns table (works_count bigint, people_count bigint, loves_count bigint, comments_count bigint)
+language sql stable security definer set search_path = public
+as $fn$
+  select
+    (select count(*) from public.works)    as works_count,
+    (select count(*) from public.profiles) as people_count,
+    (select count(*) from public.loves)    as loves_count,
+    (select count(*) from public.comments) as comments_count;
+$fn$;
+revoke execute on function public.site_stats() from public;
+grant execute on function public.site_stats() to anon, authenticated;
