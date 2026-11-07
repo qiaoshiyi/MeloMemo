@@ -833,7 +833,7 @@ const site = 'https://melomemo.cn';
           feedView.hidden = false;
           $('guestBar').hidden = !!user;
           document.querySelector('.whoami').hidden = !user;
-          await loadFeed();
+          await loadFeed(true);
           return;
         }
         if (!user) { showViews({ auth: true }); return; }
@@ -1065,9 +1065,11 @@ const site = 'https://melomemo.cn';
         loadFeed(true);
       }));
 
+      let feedSeq = 0;
       async function loadFeed(reset) {
         if (!sb) return;
         const list = $('feedList');
+        const seq = ++feedSeq;
         if (reset) {
           list.innerHTML = Array.from({ length: 4 }).map(() => `
             <div class="card skel" aria-hidden="true">
@@ -1086,6 +1088,7 @@ const site = 'https://melomemo.cn';
           ? q.order('plays', { ascending: false }).order('created_at', { ascending: false }).range(from, to)
           : q.order('created_at', { ascending: false }).range(from, to);
         const { data: works, count, error } = await q;
+        if (seq !== feedSeq) return;   // 这次请求已过期（切了视图或换了筛选），丢弃结果
         if (error) {
           list.innerHTML = '<div class="empty">加载失败，请刷新页面再试</div>';
           $('feedMoreWrap').hidden = true;
