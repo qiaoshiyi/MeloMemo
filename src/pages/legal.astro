@@ -1,0 +1,162 @@
+---
+// MeloMemo · 用户协议 / 隐私政策 / 举报与版权投诉
+// 单一页面三个锚点，导航与页脚统一指向这里
+import '../styles/global.css';
+const year = new Date().getFullYear();
+const updated = '2026 年 11 月';
+const contact = 'github.com/qiaoshiyi/MeloMemo/issues';
+---
+
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>规则与协议 · MeloMemo</title>
+    <meta name="description" content="MeloMemo 用户协议、隐私政策、社区规范、举报与版权投诉渠道。" />
+    <link rel="canonical" href="https://melomemo.cn/legal/" />
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <link rel="preconnect" href="https://giscus.app" crossorigin />
+    <meta name="theme-color" content="#0b1020" media="(prefers-color-scheme: dark)" />
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: "MeloMemo 规则与协议",
+      url: "https://melomemo.cn/legal/",
+      inLanguage: "zh-CN",
+    })} />
+    <script is:inline>
+      try {
+        var t = localStorage.getItem('mm-theme');
+        if (t) document.documentElement.dataset.theme = t;
+        else if (window.matchMedia('(prefers-color-scheme: light)').matches) document.documentElement.dataset.theme = 'light';
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <nav>
+      <div class="wrap">
+        <a class="logo" href="../">🎶 MeloMemo</a>
+        <a class="item" href="../">首页</a>
+        <a class="item" href="../app/">社区</a>
+        <a class="item" href="#terms">用户协议</a>
+        <a class="item" href="#privacy">隐私政策</a>
+        <a class="item" href="#report">举报投诉</a>
+        <button id="themeBtn" type="button" aria-label="切换明暗主题" title="切换明暗主题">🌙</button>
+      </div>
+    </nav>
+
+    <main class="wrap legal">
+      <h1>规则与协议</h1>
+      <p class="muted">最近更新：{updated}</p>
+      <p class="lead">MeloMemo 是一个音乐分享与交友的小站。为了让大家能安心听歌，请先了解下面这些约定；继续使用即表示你同意它们。</p>
+
+      <section id="terms">
+        <h2>一、用户协议</h2>
+        <h3>1. 账号</h3>
+        <ul>
+          <li>用邮箱注册，一个邮箱对应一个账号。请妥善保管密码，因密码泄露造成的损失由账号使用者承担。</li>
+          <li>不得使用他人身份注册，不得批量注册、买卖账号或利用脚本刷播放量、刷关注。</li>
+          <li>你可以随时停止使用本站；如需删除账号与数据，请通过下方「举报投诉」渠道提出，我们在核实后处理。</li>
+        </ul>
+        <h3>2. 你发布的内容</h3>
+        <ul>
+          <li>你对自己上传的音频、头像、简介等负责，并保证拥有相应权利。翻唱他人作品时，请尊重原词曲作者与演唱者的权利，注明原唱/原作者信息。</li>
+          <li>你保留作品著作权。同时授权本站为展示、播放、分享之目的存储与传输这些内容（仅限提供服务所需的范围）。</li>
+          <li>上传的音频对所有人公开可听，请勿上传包含个人隐私信息（如住址、电话、身份证号）的录音。</li>
+        </ul>
+        <h3>3. 禁止内容</h3>
+        <ul>
+          <li>违反法律法规的内容，包括危害国家安全、泄露国家秘密、煽动民族仇恨、宣扬邪教与封建迷信等。</li>
+          <li>色情、暴力、血腥、赌博、毒品、诈骗、传销，以及教唆犯罪的内容。</li>
+          <li>侵犯他人著作权、商标权、肖像权、隐私权、名誉权的内容，以及未经许可的商业广告与垃圾信息。</li>
+          <li>恶意攻击、辱骂、骚扰、人肉他人，或冒充本站工作人员的内容。</li>
+          <li>未经授权上传他人演唱、演奏或未取得授权的商业音乐成品。</li>
+        </ul>
+        <h3>4. 处理方式</h3>
+        <p>对违反上述约定的内容，我们可以不经事先通知删除、隐藏或限制其传播，并视情节限制或终止账号。你认为处理有误的，可以申诉。</p>
+        <h3>5. 免责</h3>
+        <p>本站按现状提供服务，尽力保证稳定，但不对服务不中断、数据不丢失作绝对承诺。用户之间的交流由其自行负责，请提高警惕、不要向陌生人转账或透露敏感信息。</p>
+      </section>
+
+      <section id="privacy">
+        <h2>二、隐私政策</h2>
+        <h3>1. 我们收集什么</h3>
+        <ul>
+          <li><b>账号信息</b>：注册邮箱、密码（以哈希形式保存，本站无法查看明文）。</li>
+          <li><b>公开资料</b>：昵称、主页地址、个人简介、头像——这些是你主动设置并公开展示的。</li>
+          <li><b>作品信息</b>：你上传的音频文件、歌曲标题、说明、播放次数、发布时间。</li>
+          <li><b>技术信息</b>：为完成请求而产生的访问日志（如 IP、浏览器类型），由托管与后端服务商按其策略记录。</li>
+        </ul>
+        <h3>2. 用途</h3>
+        <p>仅用于登录鉴权、展示你的主页与作品、统计播放量、处理举报与故障排查。我们不会出售你的个人信息。</p>
+        <h3>3. 存储与第三方</h3>
+        <ul>
+          <li>网页托管：GitHub Pages；数据库与文件存储：Supabase（新加坡区域）。你的数据会存储在这些服务商的服务器上。</li>
+          <li>留言板使用 giscus，它由 GitHub Discussions 提供，使用时会跳转/嵌入 GitHub 的服务，受 GitHub 隐私政策约束。</li>
+          <li>本站使用浏览器本地存储保存明暗主题偏好，不含个人身份信息。</li>
+        </ul>
+        <h3>4. 公开范围</h3>
+        <p>你的昵称、主页地址、简介、头像、作品与播放量对所有人可见，包括未登录的访客。邮箱地址不公开。</p>
+        <h3>5. 你的权利</h3>
+        <p>你可以随时在「我的主页」修改或清空资料，删除自己发布的作品。需要导出或彻底删除账号数据时，请通过下方渠道联系，我们会在合理期限内处理。</p>
+        <h3>6. 未成年人</h3>
+        <p>未满 14 周岁的用户请在监护人指导下使用；监护人发现未成年人信息被不当收集的，可联系我们删除。</p>
+      </section>
+
+      <section id="report">
+        <h2>三、举报与版权投诉</h2>
+        <p>发现违规内容或你的作品被侵权，请通过以下任一渠道告诉我们，我们会在核实后尽快处理（通常 3 个工作日内）：</p>
+        <ul>
+          <li>提交 issue：<a href="https://{contact}" target="_blank" rel="noopener">{contact}</a></li>
+          <li>在对应作品下留言并注明「举报」，或直接联系站长。</li>
+        </ul>
+        <p>为便于核实，请尽量提供：</p>
+        <ol>
+          <li>涉事内容的具体链接（作品页或用户主页地址）；</li>
+          <li>举报理由与事实说明；</li>
+          <li>版权投诉请附权利证明（作品登记、首发链接、后台截图等）及你的联系方式；</li>
+          <li>声明你所提供信息真实，并愿意承担因虚假陈述产生的责任。</li>
+        </ol>
+        <p>我们承诺对举报人身份保密。对于明显侵权的内容，我们会先行下架，再通知发布者申辩。</p>
+      </section>
+
+      <section id="community">
+        <h2>四、社区规范（一句话版）</h2>
+        <p class="rules">唱自己的歌，也尊重别人的歌；好好说话，别刷屏；遇到不适就举报，别对线。</p>
+      </section>
+
+      <p class="back"><a class="btn ghost" href="../">返回首页</a> <a class="btn ghost" href="../app/">进入社区</a></p>
+    </main>
+
+    <footer class="site">
+      <div class="wrap">© {year} MeloMemo · 音乐是交朋友最快的路</div>
+    </footer>
+
+    <style>
+      .legal { padding: 50px 22px 90px; max-width: 780px; }
+      .legal h1 { font-size: clamp(30px, 5vw, 40px); margin: 0 0 6px; }
+      .legal h2 { font-size: 22px; margin: 42px 0 10px; padding-top: 8px; border-top: 1px solid var(--card-border); }
+      .legal h3 { font-size: 16px; margin: 20px 0 6px; }
+      .legal p, .legal li { color: var(--muted); font-size: 15px; line-height: 1.85; }
+      .legal b { color: var(--ink); }
+      .legal ul, .legal ol { padding-left: 22px; margin: 6px 0; }
+      .legal a { color: var(--accent-2); }
+      .muted { color: var(--muted); }
+      .lead { font-size: 15.5px; }
+      .rules { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; padding: 16px 18px; color: var(--ink); }
+      .back { display: flex; gap: 12px; margin-top: 40px; flex-wrap: wrap; }
+    </style>
+
+    <script>
+      const themeBtn = document.getElementById('themeBtn');
+      const setTheme = t => {
+        document.documentElement.dataset.theme = t;
+        try { localStorage.setItem('mm-theme', t); } catch (e) {}
+        themeBtn.textContent = t === 'dark' ? '🌙' : '☀️';
+      };
+      setTheme(document.documentElement.dataset.theme || 'dark');
+      themeBtn.addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+    </script>
+  </body>
+</html>

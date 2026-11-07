@@ -1,8 +1,11 @@
 ---
-// MeloMemo · 社区应用页（注册/登录、发布作品、社区动态、个人主页）
+// MeloMemo · 社区应用页（游客可浏览 / 注册登录 / 发布作品 / 社区动态 / 个人主页）
 // 全部交互在浏览器端完成，后端是 Supabase（见 supabase/schema.sql 与 public/config.js）
 import Content from '../data/content.js';
 import '../styles/global.css';
+
+const year = new Date().getFullYear();
+const site = 'https://melomemo.cn';
 ---
 
 <!doctype html>
@@ -10,45 +13,75 @@ import '../styles/global.css';
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MeloMemo 社区 · 唱给你听</title>
-    <meta name="description" content="MeloMemo 音乐社区：上传你的翻唱与原创，关注喜欢的声音，交到同好朋友。" />
+    <title>社区动态 · MeloMemo 唱给懂你的人听</title>
+    <meta name="description" content="MeloMemo 音乐社区：听大家的翻唱与原创，关注喜欢的声音，上传你自己的作品，交到同好朋友。" />
+    <link rel="canonical" href={`${site}/app/`} />
     <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
-    <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <meta name="theme-color" content="#0b1020" media="(prefers-color-scheme: dark)" />
+    <meta property="og:site_name" content="MeloMemo" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={`${site}/app/`} />
+    <meta property="og:title" content="MeloMemo 社区 · 唱给懂你的人听" />
+    <meta property="og:description" content="听大家的翻唱与原创，关注喜欢的声音，上传你自己的作品。" />
+    <meta property="og:image" content={`${site}/og-image.png`} />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="dns-prefetch" href="https://mhfhbuivdwmdhqikjryu.supabase.co" />
+    <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
     <script is:inline src="../config.js"></script>
     <script is:inline>
-      try { var __t = localStorage.getItem('mm-theme'); if (__t) document.documentElement.dataset.theme = __t; } catch (e) {}
+      try {
+        var __t = localStorage.getItem('mm-theme');
+        if (__t) document.documentElement.dataset.theme = __t;
+        else if (window.matchMedia('(prefers-color-scheme: light)').matches) document.documentElement.dataset.theme = 'light';
+      } catch (e) {}
     </script>
   </head>
   <body>
+    <a class="skip-link" href="#main">跳到主要内容</a>
     <nav>
       <div class="wrap">
         <a class="logo" href="../">🎶 MeloMemo</a>
-        <a class="item" href="../#about">关于我</a>
         <a class="item" href="#/feed">社区动态</a>
         <a class="item" href="#/publish">发布作品</a>
-        <button id="themeBtn" title="切换明暗主题">🌙</button>
+        <a class="item" href="#/me">我的主页</a>
+        <a class="item join" id="authNavBtn" href="#/login">登录 / 注册</a>
+        <button id="themeBtn" type="button" title="切换明暗主题" aria-label="切换明暗主题">🌙</button>
       </div>
     </nav>
 
-    <main class="wrap app">
+    <main class="wrap app" id="main">
       <!-- 未接入 Supabase 时的提示 -->
       <div id="setupBanner" class="setup" hidden>
         🛠 社区服务正在初始化——数据库接上后这里就是注册入口。
       </div>
 
       <!-- 登录 / 注册 -->
-      <section id="authView">
+      <section id="authView" hidden>
         <h2>🎤 加入 <span class="hl">MeloMemo 社区</span></h2>
         <p class="lead">注册一个账号，上传你的翻唱和原创，去别人的主页听歌、点关注，陪着音乐交朋友。</p>
         <div class="card auth-card">
-          <div class="tabs2">
-            <button class="seg on" data-mode="login">登录</button>
-            <button class="seg" data-mode="signup">注册</button>
+          <div class="tabs2" role="tablist">
+            <button class="seg on" data-mode="login" role="tab" aria-selected="true">登录</button>
+            <button class="seg" data-mode="signup" role="tab" aria-selected="false">注册</button>
           </div>
           <label>邮箱 <input id="email" type="email" placeholder="you@example.com" autocomplete="email" /></label>
           <label>密码 <input id="password" type="password" placeholder="至少 6 位" autocomplete="current-password" /></label>
           <button id="authBtn" class="btn primary">登录</button>
-          <p id="authMsg" class="msg"></p>
+          <div class="auth-links">
+            <button id="forgotBtn" class="linkbtn" type="button">忘记密码？</button>
+            <a class="linkbtn" href="#/feed">先随便听听 →</a>
+          </div>
+          <p id="authMsg" class="msg" role="status"></p>
+        </div>
+      </section>
+
+      <!-- 重设密码（邮件里的找回链接会回到这里） -->
+      <section id="resetView" hidden>
+        <h2>🔑 设置新密码</h2>
+        <div class="card auth-card">
+          <label>新密码 <input id="newPassword" type="password" placeholder="至少 6 位" autocomplete="new-password" /></label>
+          <button id="resetBtn" class="btn primary">保存新密码</button>
+          <p id="resetMsg" class="msg" role="status"></p>
         </div>
       </section>
 
@@ -60,25 +93,31 @@ import '../styles/global.css';
             <strong id="mineName"></strong>
             <span id="mineHandle" class="muted"></span>
           </div>
-          <button id="logoutBtn" class="btn ghost tiny">退出登录</button>
+          <button id="logoutBtn" class="btn ghost tiny" type="button">退出登录</button>
         </div>
 
-        <div class="tabs3">
-          <button data-view="feed" class="on">🔥 社区动态</button>
-          <button data-view="publish">⬆️ 发布作品</button>
-          <button data-view="me">🏠 我的主页</button>
+        <div class="tabs3" role="tablist">
+          <button data-view="feed" class="on" role="tab">🔥 社区动态</button>
+          <button data-view="publish" role="tab">⬆️ 发布作品</button>
+          <button data-view="me" role="tab">🏠 我的主页</button>
         </div>
 
         <!-- 社区动态 -->
         <div id="feedView">
           <div class="feed-tools">
-            <input id="feedSearch" type="text" placeholder="🔍 搜索歌名或说明…" />
+            <input id="feedSearch" type="search" placeholder="🔍 搜索歌名或说明…" aria-label="搜索作品" />
             <div class="sortseg">
-              <button class="smini on" data-sort="new">最新</button>
-              <button class="smini" data-sort="hot">最热</button>
+              <button class="smini on" data-sort="new" type="button">最新</button>
+              <button class="smini" data-sort="hot" type="button">最热</button>
             </div>
           </div>
-          <div class="grid" id="feedList"></div>
+          <div class="guestbar card" id="guestBar" hidden>
+            <span>你现在是游客，可以随便听。想发布作品或关注作者，<a href="#/login">登录 / 注册</a> 后即可。</span>
+          </div>
+          <div class="grid" id="feedList" aria-live="polite"></div>
+          <div class="pager" id="feedMoreWrap" hidden>
+            <button id="feedMore" class="btn ghost" type="button">加载更多</button>
+          </div>
         </div>
 
         <!-- 发布作品 -->
@@ -87,12 +126,13 @@ import '../styles/global.css';
             <label>歌曲标题 <input id="songTitle" maxlength="100" placeholder="例如：《南山南》翻唱" /></label>
             <label>一句话说明（可选）<input id="songNote" maxlength="200" placeholder="翻唱 · 吉他自弹 · 2026" /></label>
             <label>音频文件 <input id="songFile" type="file" accept="audio/*" /></label>
-            <button id="publishBtn" class="btn primary">🚀 发布</button>
+            <p class="note">支持 MP3 / M4A / WAV / OGG，单个文件不超过 50MB。请只上传自己演唱或已获授权的作品。</p>
+            <button id="publishBtn" class="btn primary" type="button">🚀 发布</button>
             <div id="upWrap" class="upwrap">
               <div class="upbar"><i id="upFill"></i></div>
               <div id="upText" class="uptext"></div>
             </div>
-            <p id="publishMsg" class="msg"></p>
+            <p id="publishMsg" class="msg" role="status"></p>
           </div>
           <h3 class="sub">我发布过的 <span id="myCount" class="muted"></span></h3>
           <div class="grid" id="mineList"></div>
@@ -102,23 +142,30 @@ import '../styles/global.css';
         <div id="meView" hidden>
           <div class="card form-card">
             <div class="av-edit">
-              <button id="avatarBtn" class="mini-avatar big" title="点击更换头像">🎵</button>
+              <button id="avatarBtn" class="mini-avatar big" type="button" title="点击更换头像" aria-label="更换头像">🎵</button>
               <span class="muted">点头像换新图<br />PNG/JPG · ≤3MB · 方形最佳</span>
-              <input id="avatarFile" type="file" accept="image/*" hidden />
+              <input id="avatarFile" type="file" accept="image/png,image/jpeg,image/webp" hidden />
             </div>
             <label>昵称 <input id="pfName" maxlength="24" /></label>
             <label>个人简介 <input id="pfBio" maxlength="80" placeholder="一句话介绍你的音乐" /></label>
             <label>主页地址（字母/数字/下划线）<input id="pfUsername" maxlength="24" /></label>
-            <button id="saveProfileBtn" class="btn primary">保存</button>
-            <p id="profileMsg" class="msg"></p>
+            <button id="saveProfileBtn" class="btn primary" type="button">保存</button>
+            <p id="profileMsg" class="msg" role="status"></p>
           </div>
           <p class="muted center">你的公开主页是：<span id="myUrl" class="mono"></span></p>
+          <p class="muted center">
+            想删除账号与全部数据？请到 <a href="../legal/#report">举报与投诉页</a> 提交，我们会核实后处理。
+          </p>
         </div>
       </section>
 
-      <!-- 他人主页 -->
+      <!-- 他人主页（游客也能看） -->
       <section id="profileView" hidden>
-        <div class="card profile-card">
+        <div class="empty" id="pfNotFound" hidden>
+          没有找到这个主页，检查一下地址是否正确 🎐<br />
+          <a href="#/feed">去社区看看</a>
+        </div>
+        <div class="card profile-card" id="pfCard">
           <div class="mini-avatar big" id="pfAvatar">🎵</div>
           <div class="pf-head">
             <h2 id="pfDisplay"></h2>
@@ -132,25 +179,32 @@ import '../styles/global.css';
             <div class="frows" id="pfFollowRows"></div>
           </div>
           <div class="pf-actions">
-            <button id="followBtn" class="btn primary">关注</button>
-            <button id="shareBtn" class="btn ghost tiny">🔗 分享主页</button>
+            <button id="followBtn" class="btn primary" type="button">关注</button>
+            <button id="shareBtn" class="btn ghost tiny" type="button">🔗 分享主页</button>
           </div>
         </div>
         <div class="grid" id="pfWorksList"></div>
+        <p class="muted center" id="pfEmpty" hidden>这位音乐人还没发布作品。</p>
       </section>
     </main>
 
-    <footer class="site"><div class="wrap">© 2026 MeloMemo · 音乐是交朋友最快的路</div></footer>
+    <footer class="site">
+      <div class="wrap">
+        © {year} MeloMemo · 音乐是交朋友最快的路 ·
+        <a href="../legal/">用户协议 / 隐私政策</a> ·
+        <a href="../legal/#report">举报投诉</a>
+      </div>
+    </footer>
 
-    <div id="mini" hidden>
+    <div id="mini" hidden role="region" aria-label="正在播放">
       <div class="mini-cover" id="miniCover"><i class="disc-label" id="miniCoverLabel">🎤</i></div>
       <div class="mini-info"><strong id="miniTitle"></strong><span id="miniAuthor" class="mini-author"></span><div class="mini-timerow"><div class="mini-bar"><i id="miniFill"></i></div><span id="miniTime" class="mini-time">0:00 / 0:00</span></div></div>
-      <button id="miniToggle" title="播放/暂停">⏸</button>
-      <button id="miniClose" title="关闭">✕</button>
+      <button id="miniToggle" type="button" title="播放/暂停" aria-label="播放或暂停">⏸</button>
+      <button id="miniClose" type="button" title="关闭" aria-label="关闭播放条">✕</button>
     </div>
 
     <style>
-      .app { padding: 40px 22px 80px; min-height: 70vh; }
+      .app { padding: 34px 22px 80px; min-height: 70vh; }
       .lead { color: var(--muted); margin: -6px 0 18px; }
       .muted { color: var(--muted); }
       .center { text-align: center; }
@@ -159,15 +213,19 @@ import '../styles/global.css';
       .setup { background: var(--card); border: 1.5px dashed var(--card-border); padding: 22px; border-radius: 18px; margin: 18px 0 26px; text-align: center; color: var(--muted); }
       .msg { min-height: 1.4em; color: var(--muted); font-size: 14px; margin: 8px 0 0; }
       .msg.err { color: var(--accent); }
+      .msg.ok { color: var(--accent-2); }
       .auth-card, .form-card { max-width: 460px; display: flex; flex-direction: column; gap: 14px; padding: 24px; margin: 0 auto; }
       .auth-card label, .form-card label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--muted); }
-      input[type=email], input[type=password], input[type=text], .form-card input:not([type=file]) {
+      input[type=email], input[type=password], input[type=text], input[type=search], .form-card input:not([type=file]) {
         background: color-mix(in srgb, var(--bg) 55%, transparent);
         border: 1px solid var(--card-border); border-radius: 12px;
         color: var(--ink); padding: 11px 14px; font-size: 15px; outline: none;
       }
       input:focus { border-color: var(--accent-2); }
       .form-card input[type=file] { color: var(--muted); font-size: 13px; }
+      .auth-links { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+      .linkbtn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13.5px; padding: 0; text-decoration: none; }
+      .linkbtn:hover { color: var(--ink); text-decoration: underline; }
       .tabs2 { display: flex; gap: 6px; }
       .seg { flex: 1; padding: 10px; border-radius: 12px; border: 1px solid var(--card-border); background: none; color: var(--muted); cursor: pointer; font-size: 15px; }
       .seg.on { background: var(--gradient); color: #fff; border-color: transparent; font-weight: 700; }
@@ -175,6 +233,7 @@ import '../styles/global.css';
       .who { display: flex; flex-direction: column; flex: 1; min-width: 0; }
       .who strong { font-size: 16px; }
       .btn.tiny { padding: 7px 14px; font-size: 13px; }
+      nav a.item.join { color: #fff; background: var(--gradient); font-weight: 700; }
       .tabs3 { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
       .tabs3 button {
         padding: 10px 20px; border-radius: 999px; cursor: pointer; font-size: 14.5px;
@@ -201,7 +260,6 @@ import '../styles/global.css';
       .stats { display: flex; gap: 16px; font-size: 13.5px; color: var(--muted); margin-top: 8px; }
       .stats b { color: var(--ink); font-size: 15px; }
       .work-cover { height: 120px; border-radius: 14px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 40px; color: #fff; background: linear-gradient(135deg, #2b3a67, #6c8cff 55%, #ff5e7a); }
-      .work-cover img { width: 100%; height: 120px; object-fit: cover; display: block; }
       .playing .work-cover { animation: spin 3.2s linear infinite; }
       .byline { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
       .byline a { color: var(--accent-2); text-decoration: none; font-weight: 700; }
@@ -209,6 +267,8 @@ import '../styles/global.css';
       .del:hover { color: var(--accent); background: var(--card); }
       .mutual { font-size: 12px; background: var(--gradient); color: #fff; padding: 3px 10px; border-radius: 999px; }
       .pf-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+      .guestbar { padding: 12px 18px; margin-bottom: 16px; font-size: 14px; color: var(--muted); }
+      .guestbar a { color: var(--accent-2); font-weight: 600; }
       .feed-tools { display: flex; gap: 10px; margin-bottom: 18px; align-items: center; flex-wrap: wrap; }
       .feed-tools input {
         flex: 1; min-width: 200px;
@@ -219,6 +279,7 @@ import '../styles/global.css';
       .sortseg { display: flex; gap: 4px; }
       .smini { padding: 9px 16px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--muted); cursor: pointer; font-size: 14px; }
       .smini.on { background: var(--gradient); color: #fff; border-color: transparent; font-weight: 700; }
+      .pager { text-align: center; margin-top: 24px; }
       .upwrap { display: none; flex-direction: column; gap: 6px; }
       .upwrap.show { display: flex; }
       .upbar { height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--card-border) 60%, transparent); overflow: hidden; }
@@ -228,12 +289,13 @@ import '../styles/global.css';
       .frow { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; flex-wrap: wrap; }
       .frow .lab { color: var(--muted); flex: none; padding-top: 4px; }
       .chip { display: inline-block; padding: 3px 12px; border-radius: 999px; background: color-mix(in srgb, var(--accent-2) 14%, transparent); color: var(--accent-2); text-decoration: none; font-weight: 600; }
-      #toTop { display: none; }
+      footer.site a { color: var(--muted); }
       @media (max-width: 640px) {
         nav .wrap { flex-wrap: wrap; height: auto; row-gap: 2px; padding: 10px 16px 8px; }
         nav .logo { width: 100%; font-size: 17px; }
         nav .item { flex: 1 1 auto; text-align: center; font-size: 13px; padding: 7px 6px; }
         .profile-card { flex-direction: column; align-items: flex-start; }
+        .app { padding: 24px 16px 70px; }
       }
     </style>
 
@@ -246,8 +308,9 @@ import '../styles/global.css';
       // ---------- 通用小工具 ----------
       const $ = id => document.getElementById(id);
       const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-      const msg = (el, text, err) => { el.textContent = text; el.classList.toggle('err', !!err); };
+      const msg = (el, text, kind) => { el.textContent = text; el.classList.toggle('err', kind === 'err'); el.classList.toggle('ok', kind === 'ok'); };
       const initials = name => (name && name.trim()) ? name.trim().slice(0, 1).toUpperCase() : '🎵';
+      const encPath = p => String(p).split('/').map(encodeURIComponent).join('/');
 
       // ---------- 主题切换 ----------
       const themeBtn = $('themeBtn');
@@ -255,6 +318,7 @@ import '../styles/global.css';
         document.documentElement.dataset.theme = t;
         try { localStorage.setItem('mm-theme', t); } catch (e) {}
         themeBtn.textContent = t === 'dark' ? '🌙' : '☀️';
+        themeBtn.setAttribute('aria-label', t === 'dark' ? '切换到浅色主题' : '切换到深色主题');
       };
       setTheme(document.documentElement.dataset.theme || 'dark');
       themeBtn.addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
@@ -263,18 +327,25 @@ import '../styles/global.css';
       let myProfile = null;
       let viewingUsername = '';
       const followingSet = new Set();
+      const countedPlays = new Set();
 
       // ---------- 头像通用显示 ----------
       function setAvatar(el, url, name) {
-        if (url) { el.style.backgroundImage = `url(${esc(url)})`; el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center'; el.textContent = ''; }
-        else { el.style.backgroundImage = ''; el.textContent = initials(name); }
+        if (url) {
+          // 用 CSS.escape 之外的方式防注入：只接受 http(s) 或站内相对地址
+          const safe = /^https?:\/\//i.test(url) || url.startsWith('/') ? url : '';
+          el.style.backgroundImage = safe ? `url("${safe.replace(/["\\]/g, '')}")` : '';
+          el.style.backgroundSize = 'cover';
+          el.style.backgroundPosition = 'center';
+          el.textContent = safe ? '' : initials(name);
+        } else { el.style.backgroundImage = ''; el.textContent = initials(name); }
       }
 
-      // ---------- 关注名单展示（关注中 / 粉丝，点名字直达主页） ----------
+      // ---------- 关注名单展示 ----------
       async function renderFollowRows(followingIds, fanIds) {
         const rows = $('pfFollowRows'); if (!rows) return;
         const fetchNames = async ids => {
-          if (!ids.length) return [];
+          if (!ids || !ids.length) return [];
           const { data } = await sb.from('profiles').select('username, display_name, bio').in('id', ids);
           return data || [];
         };
@@ -288,7 +359,7 @@ import '../styles/global.css';
         `;
       }
 
-      // ---------- 迷你播放条（与首页同款） ----------
+      // ---------- 迷你播放条 ----------
       const mini = $('mini'), miniTitle = $('miniTitle'), miniCover = $('miniCover'),
             miniAuthor = $('miniAuthor'), miniFill = $('miniFill'), miniToggle = $('miniToggle'), miniClose = $('miniClose'),
             miniTime = $('miniTime'), miniCoverLabel = $('miniCoverLabel');
@@ -305,12 +376,14 @@ import '../styles/global.css';
           miniTitle.textContent = title;
           miniAuthor.textContent = author ? '🎤 ' + author : '';
           miniTime.textContent = '0:00 / ' + fmtT(audio.duration);
-          if (coverUrl) { miniCoverLabel.style.backgroundImage = `url(${coverUrl})`; miniCoverLabel.textContent = ''; }
+          if (coverUrl) { miniCoverLabel.style.backgroundImage = `url("${String(coverUrl).replace(/["\\]/g, '')}")`; miniCoverLabel.textContent = ''; }
           else { miniCoverLabel.style.backgroundImage = ''; miniCoverLabel.textContent = '🎤'; }
           miniCover.classList.add('spin');
           miniToggle.textContent = '⏸';
           card.classList.add('playing');
-          if (sb && audio.dataset.workId) sb.rpc('bump_plays', { w: audio.dataset.workId });
+          // 播放量：每个作品每次进页面只计一次，避免刷新刷量
+          const wid = audio.dataset.workId;
+          if (sb && wid && !countedPlays.has(wid)) { countedPlays.add(wid); sb.rpc('bump_plays', { w: wid }).then(() => {}, () => {}); }
         });
         audio.addEventListener('playing', () => { miniToggle.textContent = '⏸'; });
         ['pause', 'ended'].forEach(ev => audio.addEventListener(ev, () => {
@@ -329,45 +402,48 @@ import '../styles/global.css';
       function workCard(w, opts = {}) {
         const audioUrl = sb.storage.from('songs').getPublicUrl(w.storage_path).data.publicUrl;
         const who = w.profiles || {};
-        const isMine = user && w.user_id === user.id;
         const div = document.createElement('div');
         div.className = 'card';
         div.innerHTML = `
-          <div class="work-cover">🎤</div>
+          <div class="work-cover" aria-hidden="true">🎤</div>
           <div class="row">
             <h3 style="margin:0;font-size:16.5px;">${esc(w.title)}</h3>
-            ${opts.ownerView ? `<button class="del" data-id="${w.id}" title="删除作品">🗑</button>` : ''}
+            ${opts.ownerView ? `<button class="del" data-id="${esc(w.id)}" title="删除作品" aria-label="删除作品《${esc(w.title)}》" type="button">🗑</button>` : ''}
           </div>
           ${w.note ? `<span class="note">${esc(w.note)}</span>` : ''}
           ${!opts.ownerView ? `<div class="byline">由 <a href="#/u/${esc(who.username || '')}">${esc(who.display_name || who.username || '神秘音乐人')}</a>${opts.mutual ? '<span class="mutual">互相关注</span>' : ''}</div>` : ''}
-          <span class="note">▶ ${w.plays || 0} 次播放</span>
-          <audio controls preload="none" src="${esc(audioUrl)}" data-work-id="${w.id}"></audio>
+          <span class="note">▶ ${Number(w.plays || 0)} 次播放</span>
+          <audio controls preload="none" src="${esc(audioUrl)}" data-work-id="${esc(w.id)}"></audio>
         `;
-        wirePlay(div, div.querySelector('audio'), w.title, w.works_cover || null,
-          (w.profiles && (w.profiles.display_name || w.profiles.username)) ||
-          (user && w.user_id === user.id && myProfile ? (myProfile.display_name || myProfile.username) : ''));
+        wirePlay(div, div.querySelector('audio'), w.title, null,
+          (w.profiles && (w.profiles.display_name || w.profiles.username)) || '');
         const del = div.querySelector('.del');
         if (del) del.addEventListener('click', async () => {
-          if (!sb || !confirm(`确定删除《${w.title}》吗？`)) return;
-          await sb.from('works').delete().eq('id', w.id);
-          await sb.storage.from('songs').remove([w.storage_path]);
+          if (!sb || !confirm(`确定删除《${w.title}》吗？删除后不可恢复。`)) return;
+          del.disabled = true;
+          const { error } = await sb.from('works').delete().eq('id', w.id);
+          if (error) { del.disabled = false; alert('删除失败：' + error.message); return; }
+          const rm = await sb.storage.from('songs').remove([w.storage_path]);
+          if (rm.error) console.warn('音频文件删除失败：', rm.error.message);
           div.remove();
+          msg($('profileMsg') || $('publishMsg'), '已删除', 'ok');
         });
         return div;
       }
 
       function renderWorkList(container, works, opts) {
         container.innerHTML = '';
-        works.forEach(w => container.appendChild(workCard(w, opts)));
+        (works || []).forEach(w => container.appendChild(workCard(w, opts)));
       }
 
-      // ---------- 视图路由： #/feed · #/publish · #/me · #/u/用户名 ----------
-      const authView = $('authView'), shell = $('shell'),
+      // ---------- 视图路由： #/feed · #/publish · #/me · #/u/用户名 · #/login ----------
+      const authView = $('authView'), resetView = $('resetView'), shell = $('shell'),
             feedView = $('feedView'), publishView = $('publishView'), meView = $('meView'),
             profileView = $('profileView');
 
       function showViews(v) {
         authView.hidden = !v.auth;
+        resetView.hidden = !v.reset;
         shell.hidden = !v.shell;
         profileView.hidden = !v.profile;
         feedView.hidden = true;
@@ -379,65 +455,130 @@ import '../styles/global.css';
         const b = document.querySelector(`.tabs3 button[data-view="${name}"]`);
         if (b) b.classList.add('on');
       };
+      function syncAuthNav() {
+        const btn = $('authNavBtn');
+        if (user) { btn.textContent = '👤 ' + (myProfile?.display_name || myProfile?.username || '我'); btn.href = '#/me'; }
+        else { btn.textContent = '登录 / 注册'; btn.href = '#/login'; }
+      }
 
       async function route() {
-        const hash = location.hash || '#/feed';
-        if (!sb || !user) { showViews({ auth: true }); return; }
+        const raw = location.hash || '#/feed';
+        // 找回密码邮件里带着 access_token / type=recovery，交给 supabase 自己解析
+        if (/access_token=|type=recovery/.test(raw)) return;
+        const hash = raw.split('?')[0];
+
         const m = hash.match(/^#\/u\/([a-zA-Z0-9_]+)$/);
         if (m) {
-          const target = await loadProfile(m[1]);
-          if (target) return; // loadProfile 已渲染
+          const ok = await loadProfile(m[1]);
+          if (ok) return;
+          showViews({ shell: true, profile: false });
           location.hash = '#/feed';
+          return;
         }
+
+        const view = (hash.replace(/^#\//, '').split('/')[0] || 'feed');
+
+        if (view === 'login') { if (user) { location.hash = '#/me'; return; } showViews({ auth: true }); return; }
+        if (view === 'reset') { showViews({ reset: true }); return; }
+        if (view === 'feed' || view === '') {
+          showViews({ shell: true });
+          tabStyle('feed');
+          feedView.hidden = false;
+          $('guestBar').hidden = !!user;
+          document.querySelector('.whoami').hidden = !user;
+          await loadFeed();
+          return;
+        }
+        if (!user) { showViews({ auth: true }); return; }
         showViews({ shell: true });
-        const view = hash.replace('#/', '') || 'feed';
         if (view === 'publish') { tabStyle('publish'); publishView.hidden = false; await loadMine(); }
         else if (view === 'me') { tabStyle('me'); meView.hidden = false; }
         else { tabStyle('feed'); feedView.hidden = false; await loadFeed(); }
       }
       addEventListener('hashchange', route);
 
-      // ---------- 登录 / 注册 ----------
+      // ---------- 登录 / 注册 / 找回密码 ----------
       let signupMode = false;
       document.querySelectorAll('.seg').forEach(btn => btn.addEventListener('click', () => {
-        document.querySelectorAll('.seg').forEach(b => b.classList.remove('on'));
-        btn.classList.add('on');
+        document.querySelectorAll('.seg').forEach(b => { b.classList.remove('on'); b.setAttribute('aria-selected', 'false'); });
+        btn.classList.add('on'); btn.setAttribute('aria-selected', 'true');
         signupMode = btn.dataset.mode === 'signup';
         $('authBtn').textContent = signupMode ? '注册' : '登录';
+        $('password').setAttribute('autocomplete', signupMode ? 'new-password' : 'current-password');
         msg($('authMsg'), '');
       }));
+
       $('authBtn').addEventListener('click', async () => {
-        if (!sb) return;
+        if (!sb) { msg($('authMsg'), '社区服务未配置', 'err'); return; }
         const email = $('email').value.trim(), password = $('password').value;
-        msg($('authMsg'), '处理中…');
+        if (!email || !password) { msg($('authMsg'), '邮箱和密码都要填哦', 'err'); return; }
+        $('authBtn').disabled = true;
+        msg($('authMsg'), signupMode ? '注册中…' : '登录中…');
         try {
           if (signupMode) {
-            const { error } = await sb.auth.signUp({ email, password });
+            const { data, error } = await sb.auth.signUp({ email, password });
             if (error) throw error;
-            msg($('authMsg'), '注册成功！如果平台开启了邮箱验证，请先去邮箱点确认邮件，再回来登录。');
+            if (data && data.session) { location.hash = '#/feed'; location.reload(); }
+            else msg($('authMsg'), '注册成功！请先去邮箱点确认链接，再回来登录。', 'ok');
           } else {
             const { error } = await sb.auth.signInWithPassword({ email, password });
             if (error) throw error;
+            location.hash = '#/feed';
+            location.reload();
           }
         } catch (e) {
-          msg($('authMsg'), (e.message || '出错了，检查邮箱和密码是否正确') , true);
-        }
+          const map = {
+            'Invalid login credentials': '邮箱或密码不对，再检查一下',
+            'Email not confirmed': '邮箱还没确认，先去收件箱点确认链接',
+            'User already registered': '这个邮箱已经注册过了，直接登录吧',
+          };
+          msg($('authMsg'), map[e.message] || (e.message || '出错了，稍后再试'), 'err');
+        } finally { $('authBtn').disabled = false; }
       });
-      $('logoutBtn').addEventListener('click', () => sb && sb.auth.signOut());
 
-      // ---------- 一键分享当前主页 ----------
+      $('forgotBtn').addEventListener('click', async () => {
+        const email = $('email').value.trim();
+        if (!email) { msg($('authMsg'), '先填上你的注册邮箱，再点「忘记密码」', 'err'); return; }
+        if (!sb) return;
+        const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/app/' });
+        msg($('authMsg'), error ? ('发送失败：' + error.message) : '找回邮件已发出，请去邮箱点链接设置新密码。', error ? 'err' : 'ok');
+      });
+
+      $('resetBtn').addEventListener('click', async () => {
+        const pwd = $('newPassword').value;
+        if (pwd.length < 6) { msg($('resetMsg'), '密码至少 6 位', 'err'); return; }
+        if (!sb) return;
+        const { error } = await sb.auth.updateUser({ password: pwd });
+        if (error) { msg($('resetMsg'), '设置失败：' + error.message, 'err'); return; }
+        msg($('resetMsg'), '✅ 新密码已生效，正在进入社区…', 'ok');
+        setTimeout(() => { location.hash = '#/feed'; location.reload(); }, 900);
+      });
+
+      $('logoutBtn').addEventListener('click', async () => {
+        if (!sb) return;
+        await sb.auth.signOut();
+        location.hash = '#/feed';
+        location.reload();
+      });
+
+      // ---------- 分享主页 ----------
       $('shareBtn').addEventListener('click', async () => {
         if (!viewingUsername) return;
-        const link = `${location.origin}/app#/u/${viewingUsername}`;
+        const link = `${location.origin}/app/#/u/${viewingUsername}`;
         try { await navigator.clipboard.writeText(link); }
         catch (e) { prompt('复制这个链接发给朋友：', link); return; }
-        const btn = $('shareBtn'); btn.textContent = '✅ 已复制'; setTimeout(() => btn.textContent = '🔗 分享主页', 1600);
+        const btn = $('shareBtn'); const old = btn.textContent;
+        btn.textContent = '✅ 已复制';
+        setTimeout(() => btn.textContent = old, 1600);
       });
 
-      // ---------- 回车直接登录 / 注册 ----------
+      // ---------- 回车直接提交 ----------
       ['email', 'password'].forEach(id => $(id).addEventListener('keydown', e => {
         if (e.key === 'Enter') { e.preventDefault(); $('authBtn').click(); }
       }));
+      $('newPassword').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); $('resetBtn').click(); }
+      });
 
       // ---------- 登录状态 ----------
       function setShell(profile) {
@@ -449,14 +590,24 @@ import '../styles/global.css';
         $('pfName').value = profile.display_name || '';
         $('pfBio').value = profile.bio || '';
         $('pfUsername').value = profile.username || '';
-        $('myUrl').textContent = `${location.origin}/app#/u/${profile.username}`;
+        $('myUrl').textContent = `${location.origin}/app/#/u/${profile.username}`;
+        syncAuthNav();
       }
 
       async function loadProfile(username) {
         const { data: pf, error } = await sb.from('profiles').select('*').eq('username', username).maybeSingle();
-        if (!pf || error) return false;
+        if (!pf || error) {
+          showViews({ profile: true });
+          $('pfNotFound').hidden = false;
+          $('pfCard').hidden = true;
+          $('pfWorksList').innerHTML = '';
+          $('pfEmpty').hidden = true;
+          return true;
+        }
+        $('pfNotFound').hidden = true;
+        $('pfCard').hidden = false;
         const isSelf = user && pf.id === user.id;
-        const [{ count: followers }, { count: followingN }, { count: worksN }, followsData, followingData] = await Promise.all([
+        const [followers, followingN, worksN, followersList, followingList] = await Promise.all([
           sb.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', pf.id),
           sb.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', pf.id),
           sb.from('works').select('*', { count: 'exact', head: true }).eq('user_id', pf.id),
@@ -465,65 +616,93 @@ import '../styles/global.css';
         ]);
         let mutual = false, iFollow = false;
         if (user && !isSelf) {
-          iFollow = followsData.data.some(f => f.follower_id === user.id);
-          const theyFollowMe = await sb.from('follows').select('follower_id').eq('following_id', user.id).eq('follower_id', pf.id).maybeSingle();
-          mutual = iFollow && !!theyFollowMe.data;
+          iFollow = (followersList.data || []).some(f => f.follower_id === user.id);
+          const back = await sb.from('follows').select('follower_id').eq('following_id', user.id).eq('follower_id', pf.id).maybeSingle();
+          mutual = iFollow && !!back.data;
         }
         $('pfDisplay').textContent = pf.display_name || pf.username;
         viewingUsername = pf.username;
         $('pfHandle').textContent = '@' + pf.username;
         $('pfBio').textContent = pf.bio || '这位音乐人还没写简介。';
         setAvatar($('pfAvatar'), pf.avatar_url, pf.display_name || pf.username);
-        renderFollowRows(followingData.data.map(x => x.following_id), followsData.data.map(x => x.follower_id));        $('pfWorks').textContent = worksN ?? 0;
-        $('pfFollowers').textContent = followers ?? 0;
-        $('pfFollowing').textContent = followingN ?? 0;
+        renderFollowRows((followingList.data || []).map(x => x.following_id), (followersList.data || []).map(x => x.follower_id));
+        $('pfWorks').textContent = worksN.count ?? 0;
+        $('pfFollowers').textContent = followers.count ?? 0;
+        $('pfFollowing').textContent = followingN.count ?? 0;
+
         const fBtn = $('followBtn');
-        fBtn.hidden = isSelf;
+        fBtn.hidden = !!isSelf;
         fBtn.disabled = !user;
-        fBtn.textContent = isSelf ? '这是你自己' : (iFollow ? '✓ 已关注' : '+ 关注');
+        fBtn.textContent = isSelf ? '这是你自己' : (!user ? '登录后可关注' : (iFollow ? '✓ 已关注' : '+ 关注'));
         fBtn.onclick = async () => {
-          if (!user) { msg($('authMsg'), '先登录再关注哦'); return; }
-          if (iFollow) { await sb.from('follows').delete().eq('follower_id', user.id).eq('following_id', pf.id); iFollow = false; }
-          else { await sb.from('follows').insert({ follower_id: user.id, following_id: pf.id }); iFollow = true; }
+          if (!user) { location.hash = '#/login'; return; }
+          fBtn.disabled = true;
+          const res = iFollow
+            ? await sb.from('follows').delete().eq('follower_id', user.id).eq('following_id', pf.id)
+            : await sb.from('follows').insert({ follower_id: user.id, following_id: pf.id });
+          fBtn.disabled = false;
+          if (res.error) { alert('操作失败：' + res.error.message); return; }
+          iFollow = !iFollow;
           fBtn.textContent = iFollow ? '✓ 已关注' : '+ 关注';
           const nf = await sb.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', pf.id);
           $('pfFollowers').textContent = nf.count ?? 0;
-          route();
         };
+
         const { data: works } = await sb.from('works').select('*, profiles(username, display_name)').eq('user_id', pf.id).order('created_at', { ascending: false });
         showViews({ profile: true });
-        renderWorkList($('pfWorksList'), works || {}, {});
+        document.querySelectorAll('.tabs3 button').forEach(b => b.classList.remove('on'));
+        renderWorkList($('pfWorksList'), works, {});
+        $('pfEmpty').hidden = !!(works && works.length);
         return true;
       }
 
-      // ---------- 社区动态（搜索 + 最新/最热排序） ----------
-      const feedState = { q: '', sort: 'new' };
+      // ---------- 社区动态（搜索 + 最新/最热 + 加载更多） ----------
+      const PAGE = 12;
+      const feedState = { q: '', sort: 'new', page: 0, done: false };
       const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+      const safeQuery = q => q.replace(/[,()%\\"]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
+
       $('feedSearch').addEventListener('input', debounce(() => {
-        feedState.q = $('feedSearch').value.trim();
-        loadFeed();
+        feedState.q = safeQuery($('feedSearch').value);
+        feedState.page = 0; feedState.done = false;
+        loadFeed(true);
       }, 280));
       document.querySelectorAll('.smini').forEach(b => b.addEventListener('click', () => {
         document.querySelectorAll('.smini').forEach(x => x.classList.remove('on'));
         b.classList.add('on');
         feedState.sort = b.dataset.sort;
-        loadFeed();
+        feedState.page = 0; feedState.done = false;
+        loadFeed(true);
       }));
-      async function loadFeed() {
+      $('feedMore').addEventListener('click', () => { feedState.page += 1; loadFeed(false); });
+
+      async function loadFeed(reset) {
         if (!sb) return;
-        let q = sb.from('works').select('*, profiles(username, display_name)');
+        const list = $('feedList');
+        if (reset) { list.innerHTML = '<div class="empty">加载中…</div>'; feedState.page = 0; feedState.done = false; }
+        const from = feedState.page * PAGE, to = from + PAGE - 1;
+        let q = sb.from('works').select('*, profiles(username, display_name)', { count: 'exact' });
         if (feedState.q) q = q.or(`title.ilike.%${feedState.q}%,note.ilike.%${feedState.q}%`);
         q = feedState.sort === 'hot'
-          ? q.order('plays', { ascending: false }).order('created_at', { ascending: false }).limit(40)
-          : q.order('created_at', { ascending: false }).limit(40);
-        const { data: works } = await q;
-        const list = $('feedList');
-        list.innerHTML = '';
-        (works || []).forEach(w => list.appendChild(workCard(w, {})));
-        if (!works || works.length === 0)
+          ? q.order('plays', { ascending: false }).order('created_at', { ascending: false }).range(from, to)
+          : q.order('created_at', { ascending: false }).range(from, to);
+        const { data: works, count, error } = await q;
+        if (error) {
+          list.innerHTML = '<div class="empty">加载失败，请刷新页面再试</div>';
+          $('feedMoreWrap').hidden = true;
+          return;
+        }
+        if (reset) list.innerHTML = '';
+        const rows = works || [];
+        rows.forEach(w => list.appendChild(workCard(w, {})));
+        if (reset && rows.length === 0) {
           list.innerHTML = feedState.q
             ? '<div class="empty">没找到相关作品，换个关键词试试 🎶</div>'
-            : '<div class="empty">还没有作品，等你来当第一个发布者 🎤</div>';
+            : '<div class="empty">还没有作品，等你来当第一个发布者 🎤<br><a href="#/publish">去发布</a></div>';
+        }
+        const shown = from + rows.length;
+        feedState.done = shown >= (count ?? 0) || rows.length < PAGE;
+        $('feedMoreWrap').hidden = feedState.done;
       }
 
       // ---------- 我的作品 ----------
@@ -531,34 +710,41 @@ import '../styles/global.css';
         if (!sb || !user) return;
         const { data: works, count } = await sb.from('works').select('*', { count: 'exact' }).eq('user_id', user.id).order('created_at', { ascending: false });
         $('myCount').textContent = `共 ${count ?? 0} 首`;
-        renderWorkList($('mineList'), works || [], { ownerView: true });
+        renderWorkList($('mineList'), works, { ownerView: true });
       }
 
       // ---------- 发布（真实进度直传：百分比 / 已传大小 / 速度 / 预计剩余） ----------
+      const MAX_BYTES = 50 * 1024 * 1024;
       function uploadWithProgress(path, file, token, onTick) {
-        const url = cfg.url + '/storage/v1/object/songs/' + path.split('/').map(encodeURIComponent).join('/');
+        const url = cfg.url + '/storage/v1/object/songs/' + encPath(path);
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.open('POST', url);
           xhr.setRequestHeader('Authorization', 'Bearer ' + token);
           xhr.setRequestHeader('apikey', cfg.anonKey);
           xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+          xhr.setRequestHeader('x-upsert', 'false');
           xhr.upload.onprogress = e => { if (e.lengthComputable) onTick(e.loaded, e.total); };
           xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? resolve() : reject(new Error('HTTP ' + xhr.status + ' ' + (xhr.responseText || '').slice(0, 120)));
           xhr.onerror = () => reject(new Error('网络中断'));
           xhr.ontimeout = () => reject(new Error('上传超时'));
+          xhr.timeout = 10 * 60 * 1000;
           xhr.send(file);
         });
       }
       $('publishBtn').addEventListener('click', async () => {
-        if (!sb || !user) return;
+        if (!sb || !user) { location.hash = '#/login'; return; }
         const title = $('songTitle').value.trim();
         const note = $('songNote').value.trim();
         const file = $('songFile').files[0];
         msg($('publishMsg'), '');
-        if (!title || !file) { msg($('publishMsg'), '歌曲标题和音频文件都要有哦', true); return; }
-        if (file.size > 50 * 1024 * 1024) { msg($('publishMsg'), '文件请小于 50MB', true); return; }
-        const path = `${user.id}/${Date.now()}-${file.name.replace(/[^\w.\-]/g, '_')}`;
+        if (!title || !file) { msg($('publishMsg'), '歌曲标题和音频文件都要有哦', 'err'); return; }
+        if (!/^audio\//.test(file.type) && !/\.(mp3|m4a|wav|ogg|flac|aac|webm)$/i.test(file.name)) {
+          msg($('publishMsg'), '请选择音频文件（MP3 / M4A / WAV / OGG）', 'err'); return;
+        }
+        if (file.size > MAX_BYTES) { msg($('publishMsg'), '文件请小于 50MB', 'err'); return; }
+        const safeName = file.name.replace(/[^\w.\-]/g, '_').slice(-60);
+        const path = `${user.id}/${Date.now()}-${safeName}`;
         const fmtMB = x => (x / 1048576).toFixed(1);
         let t0 = performance.now(), lastLoaded = 0, lastT = 0, hinted = false;
         const tick = (loaded, total) => {
@@ -574,8 +760,8 @@ import '../styles/global.css';
             }
             lastLoaded = loaded; lastT = now;
           } else if (!lastLoaded) { lastLoaded = loaded; lastT = now; }
-          if (!hinted && now - t0 > 20000) { hinted = true; line += '<span style="opacity:.8"> · 线路跨洋稍慢，上传仍在稳定进行，别关页面</span>'; }
-          $('upText').innerHTML = line;
+          if (!hinted && now - t0 > 20000) { hinted = true; line += ' · 跨洋线路稍慢，别关页面'; }
+          $('upText').textContent = line;
         };
         $('publishBtn').disabled = true;
         $('upWrap').classList.add('show');
@@ -592,14 +778,19 @@ import '../styles/global.css';
           }
           if (!ok) throw (lastErr || new Error('上传失败'));
           const ins = await sb.from('works').insert({ user_id: user.id, title, note, storage_path: path });
-          if (ins.error) throw ins.error;
+          if (ins.error) {
+            // 元数据写入失败：清掉刚上传的音频，避免留下孤儿文件
+            try { await sb.storage.from('songs').remove([path]); } catch (e) {}
+            throw ins.error;
+          }
           $('upFill').style.width = '100%';
           $('upText').textContent = '✅ 上传完成，正在发布…';
-          msg($('publishMsg'), '🎉 发布成功！已跳转到社区动态');
+          msg($('publishMsg'), '🎉 发布成功！正在跳转到社区动态', 'ok');
           $('songTitle').value = ''; $('songNote').value = ''; $('songFile').value = '';
+          feedState.page = 0; feedState.done = false;
           location.hash = '#/feed';
         } catch (e) {
-          msg($('publishMsg'), '发布失败：' + (e.message || '未知错误'), true);
+          msg($('publishMsg'), '发布失败：' + (e.message || '未知错误'), 'err');
         } finally {
           $('publishBtn').disabled = false;
           setTimeout(() => { $('upWrap').classList.remove('show'); $('upFill').style.width = '0%'; }, 1800);
@@ -607,21 +798,28 @@ import '../styles/global.css';
       });
 
       // ---------- 资料编辑 ----------
-      function fillProfileForm() { /* 已在 setShell 填好 */ }
       $('saveProfileBtn').addEventListener('click', async () => {
         if (!sb || !user) return;
         const display_name = $('pfName').value.trim() || '音乐人';
         const bio = $('pfBio').value.trim();
         const username = $('pfUsername').value.trim();
         msg($('profileMsg'), '');
-        if (!/^[a-zA-Z0-9_]{2,24}$/.test(username)) { msg($('profileMsg'), '主页地址只能是 2-24 位字母、数字、下划线', true); return; }
-        const dupe = await sb.from('profiles').select('id').eq('username', username).neq('id', user.id).maybeSingle();
-        if (dupe.data) { msg($('profileMsg'), '这个主页地址已被占用', true); return; }
+        if (!/^[a-zA-Z0-9_]{2,24}$/.test(username)) { msg($('profileMsg'), '主页地址只能是 2-24 位字母、数字、下划线', 'err'); return; }
+        if (username !== myProfile.username) {
+          const dupe = await sb.from('profiles').select('id').eq('username', username).neq('id', user.id).maybeSingle();
+          if (dupe.data) { msg($('profileMsg'), '这个主页地址已被占用', 'err'); return; }
+        }
+        $('saveProfileBtn').disabled = true;
         const { error } = await sb.from('profiles').update({ username, display_name, bio }).eq('id', user.id);
-        if (error) { msg($('profileMsg'), '保存失败：' + error.message, true); return; }
+        $('saveProfileBtn').disabled = false;
+        if (error) {
+          // 23505 = 唯一键冲突（并发抢注），重查一次即可给出准确提示
+          msg($('profileMsg'), error.code === '23505' ? '这个主页地址刚被别人占用了，换一个吧' : '保存失败：' + error.message, 'err');
+          return;
+        }
         myProfile = { ...myProfile, username, display_name, bio };
         setShell(myProfile);
-        msg($('profileMsg'), '✅ 已保存，你的新主页地址已生效');
+        msg($('profileMsg'), '✅ 已保存，你的新主页地址已生效', 'ok');
       });
 
       // ---------- 头像更换 ----------
@@ -631,18 +829,18 @@ import '../styles/global.css';
         const file = $('avatarFile').files[0];
         $('avatarFile').value = '';
         if (!file) return;
-        if (!/^image\//.test(file.type)) { msg($('profileMsg'), '请选择图片文件（PNG/JPG/WEBP）', true); return; }
-        if (file.size > 3 * 1024 * 1024) { msg($('profileMsg'), '头像图片请小于 3MB', true); return; }
+        if (!/^image\//.test(file.type)) { msg($('profileMsg'), '请选择图片文件（PNG/JPG/WEBP）', 'err'); return; }
+        if (file.size > 3 * 1024 * 1024) { msg($('profileMsg'), '头像图片请小于 3MB', 'err'); return; }
         const { data: { session } } = await sb.auth.getSession();
-        if (!session) { msg($('profileMsg'), '登录状态过期，请刷新页面', true); return; }
-        const ext = (file.name.match(/\.(png|jpe?g|gif|webp)$/i) || [null, 'png'])[1];
+        if (!session) { msg($('profileMsg'), '登录状态过期，请刷新页面', 'err'); return; }
+        const ext = (file.name.match(/\.(png|jpe?g|gif|webp)$/i) || [null, 'png'])[1].toLowerCase();
         const path = `avatars/${user.id}/${Date.now()}.${ext}`;
         msg($('profileMsg'), '头像上传中…');
         $('avatarBtn').disabled = true;
         try {
           await new Promise((res, rej) => {
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', cfg.url + '/storage/v1/object/songs/' + path.split('/').map(encodeURIComponent).join('/'));
+            xhr.open('POST', cfg.url + '/storage/v1/object/songs/' + encPath(path));
             xhr.setRequestHeader('Authorization', 'Bearer ' + session.access_token);
             xhr.setRequestHeader('apikey', cfg.anonKey);
             xhr.setRequestHeader('Content-Type', file.type || 'image/png');
@@ -652,18 +850,18 @@ import '../styles/global.css';
           });
           const url = sb.storage.from('songs').getPublicUrl(path).data.publicUrl;
           const prev = myProfile && myProfile.avatar_url;
-          if (prev && prev.includes('/object/public/songs/avatars/')) {
+          const { error } = await sb.from('profiles').update({ avatar_url: url }).eq('id', user.id);
+          if (error) throw error;
+          if (prev && prev.includes('/object/public/songs/')) {
             const oldPath = decodeURIComponent(prev.split('/object/public/songs/')[1] || '');
             if (oldPath && oldPath !== path) { try { await sb.storage.from('songs').remove([oldPath]); } catch (e) {} }
           }
-          const { error } = await sb.from('profiles').update({ avatar_url: url }).eq('id', user.id);
-          if (error) throw error;
           myProfile = { ...myProfile, avatar_url: url };
           setAvatar($('mineAvatar'), url, myProfile.display_name || myProfile.username);
           setAvatar($('avatarBtn'), url, myProfile.display_name || myProfile.username);
-          msg($('profileMsg'), '✅ 头像已更新');
+          msg($('profileMsg'), '✅ 头像已更新', 'ok');
         } catch (e) {
-          msg($('profileMsg'), '头像上传失败：' + (e.message || '未知错误'), true);
+          msg($('profileMsg'), '头像上传失败：' + (e.message || '未知错误'), 'err');
         } finally {
           $('avatarBtn').disabled = false;
         }
@@ -671,7 +869,7 @@ import '../styles/global.css';
 
       // ---------- 启动 ----------
       (async function boot() {
-        if (!sb) return;
+        if (!sb) { showViews({ shell: true }); feedView.hidden = false; return; }
         const { data } = await sb.auth.getUser();
         user = data?.user ?? null;
         if (user) {
@@ -680,13 +878,13 @@ import '../styles/global.css';
           const { data: f } = await sb.from('follows').select('following_id').eq('follower_id', user.id);
           (f || []).forEach(x => followingSet.add(x.following_id));
         }
+        syncAuthNav();
         sb.auth.onAuthStateChange((event, session) => {
+          // 只处理真正改变登录态的事件，令牌刷新不重载页面
+          if (event === 'PASSWORD_RECOVERY') { showViews({ reset: true }); location.hash = '#/reset'; return; }
           const nowIn = !!session?.user;
-          if (nowIn !== !!user || (nowIn && session.user.id !== user?.id)) {
-            user = session?.user ?? null;
-            if (nowIn) location.reload();
-            else location.reload();
-          }
+          const changed = nowIn !== !!user || (nowIn && session.user.id !== user?.id);
+          if (changed) { user = session?.user ?? null; location.reload(); }
         });
         await route();
       })();

@@ -1,45 +1,45 @@
 // ============================================================
-//  这里是你唯一需要编辑的文件！
-//  改名字、加歌曲、贴视频，都只动这个文件。
-//  音频文件放进 public/media/ 文件夹，然后在这里引用 /media/文件名
+//  MeloMemo 站点内容与文案（改这里就能改站）
+//  · 站点品牌、副标题、介绍、标签
+//  · 首页推荐的歌曲 / 视频 / 作品（可选，留空则不显示）
+//  · 留言板、联系方式、页脚
+//  说明：社区部分（注册、发布、关注）的数据在 Supabase，不在这里。
 // ============================================================
 
 export default {
 
-  // ---------- 基本信息 ----------
-  name: "乔十一",               // 网站大标题
-  slogan: "一个爱唱歌的人 🎤",    // 首页副标题，会以打字机效果显示
-  about: "在这里写一段关于自己的介绍。\n比如：我平时喜欢翻唱歌曲，也拍一些视频，欢迎来听、来看、交个朋友。",
+  // ---------- 品牌与基本信息 ----------
+  brand: "MeloMemo",              // 站点名，导航与页脚使用
+  name: "乔十一",                  // 站长昵称（关于我）
+  slogan: "唱给懂你的人听 🎤",      // 首页副标题，打字机效果显示
+  tagline: "上传你的翻唱与原创，关注喜欢的声音——音乐是交朋友最快的路。",
+  about: "我是乔十一，一个爱唱歌的人。\n自己做翻唱，也自己写歌。MeloMemo 一开始只是我放歌的小屋，后来想明白了：一个人的歌单太小，一群人的才热闹。\n所以这里做成了一个公共的音乐角落——你上传一首，我上传一首，互相听听，点个关注，也许就聊上了。",
 
-  // 头像（可选）：把图片放进 public/ 文件夹，比如 avatar.jpg，然后填 "/avatar.jpg"
+  // 头像（可选）：图片放进 public/，比如 avatar.jpg，这里就填 "/avatar.jpg"
   avatar: "",
 
-  // ---------- 唱歌音频 ----------
-  // 用法示例：{ title: "歌曲名", note: "翻唱 · 2026", file: "/media/我的歌.mp3", cover: "/media/封面.jpg" }
-  // cover 可以留空 ""（没有封面会自动显示一个音乐卡片）
-  songs: [
-    // 把你唱的 MP3 文件放进 public/media/ 后，取消下面这行的注释并改名字：
-    // { title: "示例歌曲", note: "翻唱", file: "/media/demo.mp3", cover: "" },
+  // ---------- 平台卖点（首页三张卡片） ----------
+  features: [
+    { icon: "⬆️", title: "一首歌就能上线", desc: "注册后直接上传音频，填个标题和一句说明就发布，不需要审核排队。" },
+    { icon: "🎧", title: "边听边认识人", desc: "点开作品顺手听，喜欢就关注作者；对方也关注你时会标出「互相关注」。" },
+    { icon: "💬", title: "想聊就聊", desc: "在作品下留言，或在留言板打个招呼——比起点赞，一句回复更像交朋友。" },
   ],
 
-  // ---------- 视频 ----------
-  // 推荐把视频传到 B 站或 YouTube，然后贴"嵌入播放器链接"，比直接放视频文件快很多。
-  // B 站格式：https://player.bilibili.com/player.html?bvid=这里是你的BV号&autoplay=0
-  // YouTube 格式：https://www.youtube.com/embed/这里是视频ID
-  videos: [
-    // { title: "我的第一条视频", embed: "https://player.bilibili.com/player.html?bvid=BVxxxxxx&autoplay=0" },
-  ],
+  // ---------- 站长自己的歌（首页「我的歌声」，可选） ----------
+  // { title: "歌曲名", note: "翻唱 · 2026", file: "/media/歌.mp3", cover: "/media/封面.jpg" }
+  songs: [],
 
-  // ---------- 项目/作品（可选） ----------
-  // { title: "作品名", desc: "一句话说明", link: "https://..." }
+  // ---------- 视频（可选，推荐 B 站 / YouTube 嵌入链接） ----------
+  // B 站：https://player.bilibili.com/player.html?bvid=BVxxxxxx&autoplay=0
+  videos: [],
+
+  // ---------- 项目 / 其他作品（可选） ----------
   projects: [],
 
-  // ---------- 音乐社区方向的关键词（展示在首页，方便找到同好） ----------
+  // ---------- 首页展示的风格关键词 ----------
   tags: ["翻唱", "民谣", "流行", "吉他", "原创"],
 
-  // ---------- 留言板（GitHub Discussions，可选） ----------
-  // repo 填 "用户名/仓库名"；repoId/categoryId 到 https://giscus.app 里按提示获取后填进来
-  // repoId 没填时，留言板区域会提示先去 GitHub Discussions 留言
+  // ---------- 留言板（giscus，基于 GitHub Discussions） ----------
   comments: {
     repo: "qiaoshiyi/MeloMemo",
     repoId: "R_kgDOVlreNw",
@@ -49,11 +49,12 @@ export default {
 
   // ---------- 联系方式（留空 "" 就不显示） ----------
   contact: {
-    github: "https://github.com/qiaoshiyi",      // 例如 "https://github.com/你的用户名"
-    bilibili: "",          // 例如 "https://space.bilibili.com/你的空间号"
-    email: "",             // 例如 "mailto:you@example.com" 或 "mailto:you@qq.com"
+    github: "https://github.com/qiaoshiyi",
+    issues: "https://github.com/qiaoshiyi/MeloMemo/issues", // 反馈 / 举报 / 版权投诉入口
+    bilibili: "",
+    email: "",
   },
 
-  // ---------- 页脚 ----------
-  footer: "© 2026 乔十一 · MeloMemo · 用 Astro 搭建",
+  // ---------- 页脚（年份自动填充，不用每年改） ----------
+  footer: "MeloMemo · 音乐是交朋友最快的路",
 };

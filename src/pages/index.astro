@@ -1,6 +1,6 @@
 ---
-// MeloMemo · 互动音乐社区主页
-// 排版与交互在这里，内容全部来自 src/data/content.js
+// MeloMemo · 公共音乐社区首页（落地页）
+// 文案与站长内容来自 src/data/content.js；社区数据在 Supabase，由页面底部脚本实时拉取
 import Content from '../data/content.js';
 import '../styles/global.css';
 
@@ -8,15 +8,19 @@ const songs = Content.songs ?? [];
 const videos = Content.videos ?? [];
 const projects = Content.projects ?? [];
 const tags = Content.tags ?? [];
+const features = Content.features ?? [];
 const cm = Content.comments ?? {};
 const c = Content.contact ?? {};
 const discussionsUrl = cm.repo ? `https://github.com/${cm.repo}/discussions` : "";
 const giscusOn = Boolean(cm.repoId && cm.categoryId);
+const year = new Date().getFullYear();
+const site = "https://melomemo.cn";
+const desc = Content.tagline || Content.slogan;
 
 const links = [
-  { href: '#about', label: '关于我' },
-  songs.length > 0 && { href: '#songs', label: '歌声' },
-  videos.length > 0 && { href: '#videos', label: '视频' },
+  { href: '#features', label: '怎么玩' },
+  { href: '#latest', label: '最新作品' },
+  songs.length > 0 && { href: '#songs', label: `听 ${Content.name}` },
   projects.length > 0 && { href: '#projects', label: '作品' },
   { href: '#comments', label: '留言板' },
 ].filter(Boolean);
@@ -27,106 +31,150 @@ const links = [
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{Content.name} · MeloMemo 音乐小屋</title>
-    <meta name="description" content={Content.slogan} />
+    <title>MeloMemo · 公共音乐交友平台，唱给懂你的人听</title>
+    <meta name="description" content={desc} />
+    <meta name="keywords" content="翻唱,原创音乐,音乐交友,上传歌曲,独立音乐人,MeloMemo" />
+    <meta name="theme-color" content="#0b1020" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f2f5fc" media="(prefers-color-scheme: light)" />
+    <link rel="canonical" href={`${site}/`} />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <meta property="og:title" content={`${Content.name} · MeloMemo 音乐小屋`} />
-    <meta property="og:description" content={Content.slogan} />
+    <link rel="apple-touch-icon" href="favicon.svg" />
+    <link rel="preconnect" href="https://giscus.app" crossorigin />
+    <link rel="dns-prefetch" href="https://mhfhbuivdwmdhqikjryu.supabase.co" />
+
+    <meta property="og:site_name" content="MeloMemo" />
     <meta property="og:type" content="website" />
-    {Content.avatar && <meta property="og:image" content={Content.avatar} />}
+    <meta property="og:url" content={`${site}/`} />
+    <meta property="og:title" content="MeloMemo · 唱给懂你的人听" />
+    <meta property="og:description" content={desc} />
+    <meta property="og:image" content={`${site}/og-image.png`} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MeloMemo · 唱给懂你的人听" />
+    <meta name="twitter:description" content={desc} />
+    <meta name="twitter:image" content={`${site}/og-image.png`} />
+
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "MeloMemo",
+      alternateName: "MeloMemo 音乐社区",
+      url: `${site}/`,
+      description: desc,
+      inLanguage: "zh-CN",
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${site}/app/#/feed?q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
+    })} />
     <script is:inline>
       // 进入页面前先应用保存的主题，避免闪色
       try {
         var saved = localStorage.getItem('mm-theme');
         if (saved) document.documentElement.dataset.theme = saved;
+        else if (window.matchMedia('(prefers-color-scheme: light)').matches) document.documentElement.dataset.theme = 'light';
       } catch (e) {}
     </script>
   </head>
   <body data-slogan={Content.slogan}>
     <div id="progress"></div>
 
+    <a class="skip" href="#features">跳到主要内容</a>
+
     <nav>
       <div class="wrap">
         <a class="logo" href="#top">🎶 MeloMemo</a>
         {links.map(l => <a class="item" href={l.href}>{l.label}</a>)}
-        <a class="item join" href="app/">🎓 社区/发布作品</a>
-        <button id="themeBtn" title="切换明暗主题">🌙</button>
+        <a class="item join" href="app/">🎤 进入社区</a>
+        <button id="themeBtn" type="button" title="切换明暗主题" aria-label="切换明暗主题">🌙</button>
       </div>
     </nav>
 
     <header class="hero" id="top">
-      <span class="float-note" style="left:12%; top:22%;">🎵</span>
-      <span class="float-note" style="left:22%; top:58%; animation-delay:-2.2s;">🎶</span>
-      <span class="float-note" style="left:74%; top:26%; animation-delay:-4s;">🎵</span>
-      <span class="float-note" style="left:86%; top:60%; animation-delay:-5.5s;">🎶</span>
+      <span class="float-note" style="left:12%; top:22%;" aria-hidden="true">🎵</span>
+      <span class="float-note" style="left:22%; top:58%; animation-delay:-2.2s;" aria-hidden="true">🎶</span>
+      <span class="float-note" style="left:74%; top:26%; animation-delay:-4s;" aria-hidden="true">🎵</span>
+      <span class="float-note" style="left:86%; top:60%; animation-delay:-5.5s;" aria-hidden="true">🎶</span>
       <div class="wrap">
-        {Content.avatar && <img class="avatar" src={Content.avatar} alt="头像" />}
-        <h1>{Content.name}</h1>
-        <p class="slogan"><span id="typed"></span><span class="caret"></span></p>
+        <p class="kicker">公共音乐交友平台 · {year}</p>
+        <h1>MeloMemo</h1>
+        <p class="slogan"><span id="typed"></span><span class="caret" aria-hidden="true"></span></p>
+        <p class="tagline">{Content.tagline}</p>
         <div class="cta">
-          <a class="btn primary" href="#songs">🎧 来听我唱歌</a>
-          <a class="btn ghost" href="#comments">💬 交个朋友</a>
+          <a class="btn primary" href="app/#/feed">🎧 去听大家唱的歌</a>
           <a class="btn ghost" href="app/">🚀 注册并发布你的作品</a>
         </div>
+        <p class="hero-note">不用下载 App，一首歌的时间就能交到同好。</p>
       </div>
     </header>
 
     <main class="wrap">
-      <section id="about" class="reveal">
-        <h2>👋 关于<span class="hl">我</span></h2>
-        <p class="about-text">{Content.about}</p>
-        {tags.length > 0 && (
-          <div class="tagwall">
-            {tags.map(t => <span>{t}</span>)}
+      {features.length > 0 && (
+        <section id="features" class="reveal">
+          <h2>这个站点怎么玩</h2>
+          <div class="grid">
+            {features.map(f => (
+              <div class="card feature">
+                <span class="fico" aria-hidden="true">{f.icon}</span>
+                <h3>{f.title}</h3>
+                <p class="note">{f.desc}</p>
+              </div>
+            ))}
           </div>
-        )}
+        </section>
+      )}
+
+      <section id="latest" class="reveal" hidden aria-live="polite">
+        <div class="sec-head">
+          <h2>最新作品</h2>
+          <a class="more" href="app/#/feed">查看全部 →</a>
+        </div>
+        <div class="grid" id="latestList" aria-live="polite"></div>
+        <p class="note" id="latestEmpty" hidden>还没有人上传作品，等你来当第一个 🎤</p>
       </section>
 
-      <section id="songs" class="reveal">
-        <h2>🎵 我的<span class="hl">歌声</span></h2>
-        {songs.length === 0
-          ? <div class="empty">还没有歌曲。把 MP3 放进 public/media/ 文件夹，再到 src/data/content.js 里加一行就能显示在这里。</div>
-          : (
-            <div class="grid">
-              {songs.map(s => (
-                <div class="card">
-                  <div class="cover">
-                    {s.cover ? <img src={s.cover} alt={s.title} /> : <span>🎤</span>}
-                    <span class="hole"></span>
-                  </div>
-                  <div class="row">
-                    <h3>{s.title}</h3>
-                    <div class="eq"><i></i><i></i><i></i><i></i></div>
-                    <button class="like" data-title={s.title} title="喜欢这首歌">🤍</button>
-                  </div>
-                  {s.note && <span class="note">{s.note}</span>}
-                  <audio controls preload="none" src={s.file}></audio>
+      {songs.length > 0 && (
+        <section id="songs" class="reveal">
+          <h2>听 {Content.name} 唱</h2>
+          <div class="grid">
+            {songs.map(s => (
+              <div class="card">
+                <div class="cover">
+                  {s.cover ? <img src={s.cover} alt={s.title} /> : <span aria-hidden="true">🎤</span>}
+                  <span class="hole"></span>
                 </div>
-              ))}
-            </div>
-          )}
-      </section>
+                <div class="row">
+                  <h3>{s.title}</h3>
+                  <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                </div>
+                {s.note && <span class="note">{s.note}</span>}
+                <audio controls preload="none" src={s.file}></audio>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
-      <section id="videos" class="reveal">
-        <h2>🎬 我的<span class="hl">视频</span></h2>
-        {videos.length === 0
-          ? <div class="empty">还没有视频。传到 B 站或 YouTube 后，把嵌入链接贴到 src/data/content.js 即可。</div>
-          : (
-            <div class="grid">
-              {videos.map(v => (
-                <div class="card video-card">
-                  <iframe src={v.embed} title={v.title}
-                    allowfullscreen loading="lazy"></iframe>
-                  <h3>{v.title}</h3>
-                </div>
-              ))}
-            </div>
-          )}
-      </section>
+      {videos.length > 0 && (
+        <section id="videos" class="reveal">
+          <h2>视频</h2>
+          <div class="grid">
+            {videos.map(v => (
+              <div class="card video-card">
+                <iframe src={v.embed} title={v.title} allowfullscreen loading="lazy"></iframe>
+                <h3>{v.title}</h3>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {projects.length > 0 && (
         <section id="projects" class="reveal">
-          <h2>🛠 <span class="hl">作品</span>集</h2>
+          <h2>作品集</h2>
           <div class="grid">
             {projects.map(p => (
               <div class="card">
@@ -139,11 +187,23 @@ const links = [
         </section>
       )}
 
+      <section id="about" class="reveal">
+        <h2>关于 {Content.name}</h2>
+        <p class="about-text">{Content.about}</p>
+        {tags.length > 0 && (
+          <div class="tagwall" aria-label="常听的风格">
+            {tags.map(t => <span>{t}</span>)}
+          </div>
+        )}
+      </section>
+
       <section id="comments" class="reveal">
-        <h2>💬 <span class="hl">留言板</span> · 找我交朋友</h2>
+        <h2>留言板</h2>
+        <p class="lead">想认识谁、想说什么，都可以留在这里。</p>
         <div class="card comment-box">
           {giscusOn ? (
             <div>
+              <p class="note giscus-hint">留言板由 GitHub Discussions 提供，需要用 GitHub 账号登录；没有账号也可以直接在 <a href="app/">社区</a> 里给作品留言。</p>
               <script is:inline src="https://giscus.app/client.js"
                 data-repo={cm.repo} data-repo-id={cm.repoId}
                 data-category={cm.category || "Announcements"} data-category-id={cm.categoryId}
@@ -161,33 +221,71 @@ const links = [
       </section>
 
       <section id="contact" class="reveal">
-        <h2>📮 <span class="hl">联系</span>我</h2>
+        <h2>联系与反馈</h2>
         <div class="contact-list">
           {c.github && <a href={c.github} target="_blank" rel="noopener">💻 GitHub</a>}
+          {c.issues && <a href={c.issues} target="_blank" rel="noopener">🐞 问题反馈 / 侵权投诉</a>}
           {c.bilibili && <a href={c.bilibili} target="_blank" rel="noopener">📺 B站</a>}
           {c.email && <a href={c.email}>✉️ 邮箱</a>}
         </div>
+        <p class="legal-links">
+          <a href="legal/">用户协议</a> · <a href="legal/#privacy">隐私政策</a> · <a href="legal/#report">举报与版权投诉</a>
+        </p>
       </section>
     </main>
 
     <footer class="site">
-      <div class="wrap">{Content.footer}</div>
+      <div class="wrap">© {year} {Content.footer}</div>
     </footer>
 
-    <!-- 迷你播放条：点歌后跟随在底部 -->
-    <div id="mini" hidden>
-      <div class="mini-cover" id="miniCover">🎤</div>
+    <!-- 迷你播放条：点开作品后跟随在底部 -->
+    <div id="mini" hidden role="region" aria-label="正在播放">
+      <div class="mini-cover" id="miniCover"><i class="disc-label" id="miniCoverLabel">🎤</i></div>
       <div class="mini-info">
         <strong id="miniTitle"></strong>
-        <div class="mini-bar"><i id="miniFill"></i></div>
+        <span class="mini-author" id="miniAuthor"></span>
+        <div class="mini-timerow">
+          <div class="mini-bar"><i id="miniFill"></i></div>
+          <span class="mini-time" id="miniTime">0:00 / 0:00</span>
+        </div>
       </div>
-      <button id="miniToggle" title="播放/暂停">⏸</button>
-      <button id="miniClose" title="关闭">✕</button>
+      <button id="miniToggle" type="button" title="播放/暂停" aria-label="播放或暂停">⏸</button>
+      <button id="miniClose" type="button" title="关闭" aria-label="关闭播放条">✕</button>
     </div>
 
-    <!-- 回到顶部 -->
-    <button id="toTop" title="回到顶部" aria-label="回到顶部">↑</button>
+    <button id="toTop" type="button" title="回到顶部" aria-label="回到顶部">↑</button>
 
+    <style>
+      .skip {
+        position: absolute; left: -9999px; top: 0; z-index: 100;
+        background: var(--accent); color: #fff; padding: 10px 16px; border-radius: 0 0 12px 0;
+      }
+      .skip:focus { left: 0; }
+      .hero .kicker { color: var(--muted); font-size: 13.5px; letter-spacing: 3px; text-transform: uppercase; margin: 0 0 10px; }
+      .hero .tagline { color: var(--muted); max-width: 620px; margin: 0 auto 26px; font-size: 16.5px; }
+      .hero-note { color: var(--muted); font-size: 13px; margin: 16px 0 0; }
+      .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+      .more { color: var(--accent-2); text-decoration: none; font-size: 14.5px; font-weight: 600; }
+      .more:hover { text-decoration: underline; }
+      .feature { gap: 6px; }
+      .fico { font-size: 26px; line-height: 1; }
+      .lead { color: var(--muted); margin: -8px 0 16px; }
+      .giscus-hint { margin: 0 0 12px; }
+      .giscus-hint a { color: var(--accent-2); }
+      .legal-links { color: var(--muted); font-size: 13.5px; margin: 14px 0 0; }
+      .legal-links a { color: var(--muted); }
+      .legal-links a:hover { color: var(--ink); }
+      .work-cover {
+        height: 120px; border-radius: 14px; position: relative; overflow: hidden;
+        display: flex; align-items: center; justify-content: center; font-size: 40px; color: #fff;
+        background: linear-gradient(135deg, #2b3a67, #6c8cff 55%, #ff5e7a);
+      }
+      .byline { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+      .byline a { color: var(--accent-2); text-decoration: none; font-weight: 700; }
+      .work-meta { color: var(--muted); font-size: 12.5px; }
+    </style>
+
+    <script is:inline src="config.js"></script>
     <script>
       // ===== 明暗主题切换（留言板 giscus 主题一起跟着换） =====
       const themeBtn = document.getElementById('themeBtn');
@@ -200,6 +298,7 @@ const links = [
         document.documentElement.dataset.theme = t;
         try { localStorage.setItem('mm-theme', t); } catch (e) {}
         themeBtn.textContent = t === 'dark' ? '🌙' : '☀️';
+        themeBtn.setAttribute('aria-label', t === 'dark' ? '切换到浅色主题' : '切换到深色主题');
         syncGiscus(t);
       };
       setTheme(document.documentElement.dataset.theme || 'dark');
@@ -210,22 +309,22 @@ const links = [
       // ===== 打字机欢迎语（口号放在 <body data-slogan> 里） =====
       const typedEl = document.getElementById('typed');
       const text = document.body.dataset.slogan || '';
-      let ti = 0;
-      (function type() {
-        if (ti <= text.length) {
-          typedEl.textContent = text.slice(0, ti++);
-          setTimeout(type, 95);
-        }
-      })();
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduce) typedEl.textContent = text;
+      else (function type(i) {
+        if (i <= text.length) { typedEl.textContent = text.slice(0, i++); setTimeout(() => type(i), 95); }
+      })(0);
 
       // ===== 顶部进度条 + 回到顶部按钮显隐 =====
       const bar = document.getElementById('progress');
+      const toTop = document.getElementById('toTop');
       addEventListener('scroll', () => {
         const h = document.documentElement;
-        const p = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+        const p = h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100;
         bar.style.width = p + '%';
         toTop.classList.toggle('show', h.scrollTop > 500);
       }, { passive: true });
+      toTop.addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
 
       // ===== 滚动浮现 =====
       const io = new IntersectionObserver(es => {
@@ -233,16 +332,19 @@ const links = [
       }, { threshold: 0.12 });
       document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 
-      // ===== 播放管理：同一时间只播一首；播放时唱片旋转 + 均衡器 + 迷你播放条 =====
+      // ===== 迷你播放条：同一时间只播一首 =====
       const mini = document.getElementById('mini');
       const miniTitle = document.getElementById('miniTitle');
-      const miniCover = document.getElementById('miniCover');
+      const miniAuthor = document.getElementById('miniAuthor');
       const miniFill = document.getElementById('miniFill');
+      const miniTime = document.getElementById('miniTime');
       const miniToggle = document.getElementById('miniToggle');
       const miniClose = document.getElementById('miniClose');
+      const miniCoverLabel = document.getElementById('miniCoverLabel');
+      const miniCover = document.getElementById('miniCover');
+      const fmtT = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
       let currentAudio = null;
 
-      const stopMini = () => { mini.hidden = true; };
       mini.addEventListener('click', e => e.stopPropagation());
       miniToggle.addEventListener('click', () => {
         if (!currentAudio) return;
@@ -250,25 +352,25 @@ const links = [
       });
       miniClose.addEventListener('click', () => {
         if (currentAudio) currentAudio.pause();
-        stopMini();
+        mini.hidden = true;
       });
 
-      document.querySelectorAll('.card:has(audio)').forEach(card => {
+      function wireCard(card) {
         const audio = card.querySelector('audio');
+        if (!audio) return;
+        const title = card.querySelector('h3')?.textContent || '正在播放';
+        const author = card.dataset.author || '';
+        const coverUrl = card.dataset.cover || '';
         audio.addEventListener('play', () => {
           document.querySelectorAll('audio').forEach(a => { if (a !== audio) a.pause(); });
-          document.querySelectorAll('.playing').forEach(x => { if (x !== card) x.classList.remove('playing'); });
+          document.querySelectorAll('.playing').forEach(x => x.classList.remove('playing'));
           card.classList.add('playing');
           currentAudio = audio;
-          miniTitle.textContent = card.querySelector('h3')?.textContent || '正在播放';
-          const coverImg = card.querySelector('.cover img');
-          if (coverImg) {
-            miniCover.style.backgroundImage = `url(${coverImg.src})`;
-            miniCover.textContent = '';
-          } else {
-            miniCover.style.backgroundImage = '';
-            miniCover.textContent = '🎤';
-          }
+          miniTitle.textContent = title;
+          miniAuthor.textContent = author ? '🎤 ' + author : '';
+          miniTime.textContent = '0:00 / ' + fmtT(audio.duration);
+          if (coverUrl) { miniCoverLabel.style.backgroundImage = `url("${coverUrl}")`; miniCoverLabel.textContent = ''; }
+          else { miniCoverLabel.style.backgroundImage = ''; miniCoverLabel.textContent = '🎤'; }
           mini.hidden = false;
           miniToggle.textContent = '⏸';
           miniCover.classList.add('spin');
@@ -282,25 +384,46 @@ const links = [
         audio.addEventListener('timeupdate', () => {
           if (currentAudio !== audio) return;
           miniFill.style.width = (audio.currentTime / (audio.duration || 1) * 100) + '%';
+          miniTime.textContent = fmtT(audio.currentTime) + ' / ' + fmtT(audio.duration);
         });
-      });
+      }
+      document.querySelectorAll('.card').forEach(wireCard);
 
-      // ===== 回到顶部 =====
-      const toTop = document.getElementById('toTop');
-      toTop.addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
-
-      // ===== 点赞（保存在本机浏览器里） =====
-      document.querySelectorAll('.like').forEach(btn => {
-        const key = 'mm-like:' + btn.dataset.title;
-        let on = false;
-        try { on = localStorage.getItem(key) === '1'; } catch (e) {}
-        if (on) { btn.classList.add('on'); btn.textContent = '❤️'; }
-        btn.addEventListener('click', () => {
-          const now = btn.classList.toggle('on');
-          btn.textContent = now ? '❤️' : '🤍';
-          try { localStorage.setItem(key, now ? '1' : '0'); } catch (e) {}
-        });
-      });
+      // ===== 首页实时作品流：直连 Supabase 公开只读接口 =====
+      (async function latest() {
+        const cfg = window.MELO_CONFIG || {};
+        const sec = document.getElementById('latest');
+        const list = document.getElementById('latestList');
+        const empty = document.getElementById('latestEmpty');
+        if (!cfg.url || !cfg.anonKey || !sec) return;
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        try {
+          const res = await fetch(
+            `${cfg.url}/rest/v1/works?select=id,title,note,storage_path,plays,created_at,profiles(username,display_name)&order=created_at.desc&limit=6`,
+            { headers: { apikey: cfg.anonKey, Accept: 'application/json' } }
+          );
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const works = await res.json();
+          sec.hidden = false;
+          if (!works.length) { empty.hidden = false; return; }
+          list.innerHTML = works.map(w => {
+            const who = w.profiles || {};
+            const url = `${cfg.url}/storage/v1/object/public/songs/${String(w.storage_path).split('/').map(encodeURIComponent).join('/')}`;
+            return `
+              <div class="card" data-author="${esc(who.display_name || who.username || '')}">
+                <div class="work-cover" aria-hidden="true">🎤</div>
+                <div class="row"><h3>${esc(w.title)}</h3></div>
+                ${w.note ? `<span class="note">${esc(w.note)}</span>` : ''}
+                <div class="byline">by <a href="app/#/u/${esc(who.username || '')}">${esc(who.display_name || who.username || '神秘音乐人')}</a></div>
+                <span class="work-meta">▶ ${w.plays || 0} 次播放</span>
+                <audio controls preload="none" src="${esc(url)}" data-work-id="${esc(w.id)}"></audio>
+              </div>`;
+          }).join('');
+          list.querySelectorAll('.card').forEach(wireCard);
+        } catch (e) {
+          sec.hidden = true; // 拉不到就安静隐藏，不影响落地页
+        }
+      })();
     </script>
   </body>
 </html>
