@@ -122,3 +122,26 @@ alter table public.loves enable row level security;
 create policy "loves_public_read" on public.loves for select using (true);
 create policy "loves_insert_own"  on public.loves for insert with check (auth.uid() = user_id);
 create policy "loves_delete_own"  on public.loves for delete using (auth.uid() = user_id);
+
+-- 作品时长（秒）：发布时由前端读音频元数据写入，用于卡片展示
+alter table public.works add column if not exists duration int not null default 0;
+alter table public.works drop constraint if exists works_duration_chk;
+alter table public.works add constraint works_duration_chk check (duration >= 0 and duration <= 86400);
+
+-- 站内评论：每首作品一个评论区，游客可读、登录可写、只能删自己的
+create table if not exists public.comments (
+  id         uuid primary key default gen_random_uuid(),
+  work_id    uuid not null references public.works(id)    on delete cascade,
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  body       text not null,
+  created_at timestamptz not null default now(),
+  constraint comments_body_len check (char_length(body) between 1 and 300)
+);
+create index if not exists comments_work_idx on public.comments (work_id, created_at desc);
+alter table public.comments enable row level security;
+drop policy if exists "comments_public_read" on public.comments;
+create policy "comments_public_read" on public.comments for select using (true);
+drop policy if exists "comments_insert_own" on public.comments;
+create policy "comments_insert_own" on public.comments for insert with check (auth.uid() = user_id);
+drop policy if exists "comments_delete_own" on public.comments;
+create policy "comments_delete_own" on public.comments for delete using (auth.uid() = user_id);
