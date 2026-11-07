@@ -183,6 +183,12 @@ const site = 'https://melomemo.cn';
             <button id="saveProfileBtn" class="btn primary" type="button">保存</button>
             <p id="profileMsg" class="msg" role="status"></p>
           </div>
+          <div class="card form-card">
+            <h3 class="sub">修改密码</h3>
+            <label>新密码 <input id="newPwd" type="password" placeholder="至少 8 位" autocomplete="new-password" /></label>
+            <button id="changePwdBtn" class="btn primary" type="button">保存新密码</button>
+            <p id="changePwdMsg" class="msg" role="status"></p>
+          </div>
           <p class="muted center">你的公开主页是：<span id="myUrl" class="mono"></span></p>
           <p class="muted center">
             想删除账号与全部数据？请到 <a href="../legal/#report">举报与投诉页</a> 提交，我们会核实后处理。
@@ -520,7 +526,9 @@ const site = 'https://melomemo.cn';
         setTimeout(() => { el.classList.remove('in'); setTimeout(() => el.remove(), 320); }, 2600);
       }
       // ---------- 人机验证（hCaptcha，sitekey 见 config.js） ----------
-      const CAPTCHA_KEY = (cfg.captcha && cfg.captchaSiteKey) ? cfg.captchaSiteKey : '';
+      // 前端是否与 Supabase 后台的「强制人机验证」联动：见 config.js 注释
+      const CAPTCHA_KEY = (cfg.captchaEnabled === true && cfg.captchaSiteKey)
+        ? String(cfg.captchaSiteKey) : '';
       let captchaToken = '';
       let captchaWidget = null;
       let captchaLoading = false;
@@ -1001,6 +1009,19 @@ const site = 'https://melomemo.cn';
         if (error) { msg($('resetMsg'), '设置失败：' + error.message, 'err'); return; }
         msg($('resetMsg'), '✅ 新密码已生效，正在进入社区…', 'ok');
         setTimeout(() => { location.hash = '#/feed'; location.reload(); }, 900);
+      });
+
+      // 已登录用户自助改密（无需邮件，SMTP 未配置时也能用）
+      $('changePwdBtn').addEventListener('click', async () => {
+        const pwd = $('newPwd').value;
+        if (pwd.length < 8) { msg($('changePwdMsg'), '密码至少 8 位', 'err'); return; }
+        if (!sb) { msg($('changePwdMsg'), '社区服务未配置', 'err'); return; }
+        $('changePwdBtn').disabled = true;
+        const { error } = await sb.auth.updateUser({ password: pwd });
+        $('changePwdBtn').disabled = false;
+        if (error) { msg($('changePwdMsg'), '修改失败：' + error.message, 'err'); return; }
+        $('newPwd').value = '';
+        msg($('changePwdMsg'), '✅ 密码已更新，请牢记新密码', 'ok');
       });
 
       $('logoutBtn').addEventListener('click', async () => {
