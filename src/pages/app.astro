@@ -66,6 +66,7 @@ const site = 'https://melomemo.cn';
           </div>
           <label>邮箱 <input id="email" type="email" placeholder="you@example.com" autocomplete="email" /></label>
           <label>密码 <input id="password" type="password" placeholder="至少 8 位" autocomplete="current-password" /></label>
+          <div id="captchaBox" class="captcha-box" hidden></div>
           <button id="authBtn" class="btn primary">登录</button>
           <div class="auth-links">
             <button id="forgotBtn" class="linkbtn" type="button">忘记密码？</button>
@@ -256,6 +257,8 @@ const site = 'https://melomemo.cn';
       input:focus { border-color: var(--accent-2); }
       .form-card input[type=file] { color: var(--muted); font-size: 13px; }
       .auth-links { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+      .captcha-box { display: flex; justify-content: center; }
+      .captcha-box:empty { display: none; }
       .linkbtn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13.5px; padding: 0; text-decoration: none; }
       .linkbtn:hover { color: var(--ink); text-decoration: underline; }
       .tabs2 { display: flex; gap: 6px; }
@@ -464,6 +467,48 @@ const site = 'https://melomemo.cn';
         requestAnimationFrame(() => el.classList.add('in'));
         setTimeout(() => { el.classList.remove('in'); setTimeout(() => el.remove(), 320); }, 2600);
       }
+      // ---------- 人机验证（hCaptcha，sitekey 见 config.js） ----------
+      const CAPTCHA_KEY = (cfg.captcha && cfg.captchaSiteKey) ? cfg.captchaSiteKey : '';
+      let captchaToken = '';
+      let captchaWidget = null;
+      let captchaLoading = false;
+      function renderCaptcha() {
+        if (!window.hcaptcha || captchaWidget !== null) return;
+        const box = $('captchaBox');
+        if (!box) return;
+        box.hidden = false;
+        try {
+          captchaWidget = window.hcaptcha.render(box, {
+            sitekey: CAPTCHA_KEY,
+            theme: document.documentElement.dataset.theme === 'light' ? 'light' : 'dark',
+            callback: t => { captchaToken = t; },
+            'expired-callback': () => { captchaToken = ''; },
+            'error-callback': () => { captchaToken = ''; },
+          });
+        } catch (e) { /* 同一容器重复 render 会抛错，忽略即可 */ }
+      }
+      function loadCaptcha() {
+        if (!CAPTCHA_KEY) return;
+        if (window.hcaptcha) { renderCaptcha(); return; }
+        if (captchaLoading) return;
+        captchaLoading = true;
+        const s = document.createElement('script');
+        s.src = 'https://js.hcaptcha.com/1/api.js?render=explicit&hl=zh';
+        s.async = true; s.defer = true;
+        s.onload = () => { captchaLoading = false; renderCaptcha(); };
+        s.onerror = () => {
+          captchaLoading = false;
+          const box = $('captchaBox');
+          if (box) { box.hidden = false; box.innerHTML = '<p class="msg err">人机验证加载失败，检查网络后刷新页面重试</p>'; }
+        };
+        document.head.appendChild(s);
+      }
+      function resetCaptcha() {
+        captchaToken = '';
+        if (window.hcaptcha && captchaWidget !== null) { try { window.hcaptcha.reset(captchaWidget); } catch (e) {} }
+      }
+      const captchaOpts = () => (CAPTCHA_KEY ? { captchaToken } : {});
+
       const initials = name => (name && name.trim()) ? name.trim().slice(0, 1).toUpperCase() : '🎵';
       const encPath = p => String(p).split('/').map(encodeURIComponent).join('/');
 
@@ -744,6 +789,7 @@ const site = 'https://melomemo.cn';
 
       function showViews(v) {
         authView.hidden = !v.auth;
+        if (v.auth) loadCaptcha();
         resetView.hidden = !v.reset;
         shell.hidden = !v.shell;
         profileView.hidden = !v.profile;
@@ -827,16 +873,17 @@ const site = 'https://melomemo.cn';
         if (!sb) { msg($('authMsg'), '社区服务未配置', 'err'); return; }
         const email = $('email').value.trim(), password = $('password').value;
         if (!email || !password) { msg($('authMsg'), '邮箱和密码都要填哦', 'err'); return; }
+        if (CAPTCHA_KEY && !captchaToken) { msg($('authMsg'), '先完成下面的人机验证', 'err'); return; }
         $('authBtn').disabled = true;
         msg($('authMsg'), signupMode ? '注册中…' : '登录中…');
         try {
           if (signupMode) {
-            const { data, error } = await sb.auth.signUp({ email, password });
+            const { data, error } = await sb.auth.signUp({ email, password }, captchaOpts());
             if (error) throw error;
             if (data && data.session) { location.hash = '#/feed'; location.reload(); }
             else msg($('authMsg'), '注册成功！请先去邮箱点确认链接，再回来登录。', 'ok');
           } else {
-            const { error } = await sb.auth.signInWithPassword({ email, password });
+            const { error } = await sb.auth.signInWithPassword({ email, password }, captchaOpts());
             if (error) throw error;
             location.hash = '#/feed';
             location.reload();
@@ -848,6 +895,7 @@ const site = 'https://melomemo.cn';
             'User already registered': '这个邮箱已经注册过了，直接登录吧',
           };
           msg($('authMsg'), map[e.message] || (e.message || '出错了，稍后再试'), 'err');
+          resetCaptcha();
         } finally { $('authBtn').disabled = false; }
       });
 
@@ -855,7 +903,9 @@ const site = 'https://melomemo.cn';
         const email = $('email').value.trim();
         if (!email) { msg($('authMsg'), '先填上你的注册邮箱，再点「忘记密码」', 'err'); return; }
         if (!sb) return;
-        const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/app/' });
+        if (CAPTCHA_KEY && !captchaToken) { msg($('authMsg'), '先完成下面的人机验证', 'err'); return; }
+        const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/app/', ...captchaOpts() });
+        resetCaptcha();
         msg($('authMsg'), error ? ('发送失败：' + error.message) : '找回邮件已发出，请去邮箱点链接设置新密码。', error ? 'err' : 'ok');
       });
 
