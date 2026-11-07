@@ -12,9 +12,9 @@ import '../styles/global.css';
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MeloMemo 社区 · 唱给你听</title>
     <meta name="description" content="MeloMemo 音乐社区：上传你的翻唱与原创，关注喜欢的声音，交到同好朋友。" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
     <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <script is:inline src="/config.js"></script>
+    <script is:inline src="../config.js"></script>
     <script is:inline>
       try { var __t = localStorage.getItem('mm-theme'); if (__t) document.documentElement.dataset.theme = __t; } catch (e) {}
     </script>
@@ -22,8 +22,8 @@ import '../styles/global.css';
   <body>
     <nav>
       <div class="wrap">
-        <a class="logo" href="/">🎶 MeloMemo</a>
-        <a class="item" href="/#about">关于我</a>
+        <a class="logo" href="../">🎶 MeloMemo</a>
+        <a class="item" href="../#about">关于我</a>
         <a class="item" href="#/feed">社区动态</a>
         <a class="item" href="#/publish">发布作品</a>
         <button id="themeBtn" title="切换明暗主题">🌙</button>
