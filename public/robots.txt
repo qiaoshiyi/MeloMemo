@@ -1,5 +1,5 @@
 User-agent: *
 Allow: /
-Disallow: /app/
 
+# 社区是客户端渲染 + hash 路由，爬虫抓不到动态内容，但首页/协议页/社区入口都欢迎索引
 Sitemap: https://melomemo.cn/sitemap.xml
