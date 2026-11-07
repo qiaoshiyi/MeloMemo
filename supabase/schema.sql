@@ -145,3 +145,73 @@ drop policy if exists "comments_insert_own" on public.comments;
 create policy "comments_insert_own" on public.comments for insert with check (auth.uid() = user_id);
 drop policy if exists "comments_delete_own" on public.comments;
 create policy "comments_delete_own" on public.comments for delete using (auth.uid() = user_id);
+
+-- ===== 2026-11 追加：发现音乐人 / 通知中心（已在线上执行）=====
+-- 说明：profiles 与 works/loves 之间存在多条外键关系，PostgREST 直接聚合会报
+-- 300 PGRST201；聚合的排序/过滤也不能写在 URL 里。所以这两个列表走 SECURITY DEFINER RPC。
+
+create or replace function public.discover_people(
+  p_q text default '',
+  p_limit int default 12,
+  p_offset int default 0
+)
+returns table (
+  username text, display_name text, avatar_url text, bio text,
+  created_at timestamptz, works_count bigint, followers_count bigint, total bigint
+)
+language sql stable security definer set search_path = public
+as $fn$
+  select p.username, p.display_name, p.avatar_url, p.bio, p.created_at,
+         (select count(*) from public.works w where w.user_id = p.id) as works_count,
+         (select count(*) from public.follows f where f.following_id = p.id) as followers_count,
+         count(*) over () as total
+  from public.profiles p
+  where coalesce(p_q, '') = ''
+     or p.username ilike '%' || p_q || '%'
+     or coalesce(p.display_name, '') ilike '%' || p_q || '%'
+  order by works_count desc, followers_count desc, p.created_at desc
+  limit greatest(1, least(coalesce(p_limit, 12), 50))
+  offset greatest(0, coalesce(p_offset, 0));
+$fn$;
+grant execute on function public.discover_people(text, int, int) to anon, authenticated;
+
+create or replace function public.my_notices(p_limit int default 30)
+returns table (
+  kind text, created_at timestamptz,
+  actor_username text, actor_name text, actor_avatar text,
+  work_id uuid, work_title text, body text
+)
+language sql stable security definer set search_path = public
+as $fn$
+  select t.kind, t.created_at, t.actor_username, t.actor_name, t.actor_avatar,
+         t.work_id, t.work_title, t.body
+  from (
+    select 'follow'::text as kind, f.created_at,
+           p.username as actor_username, p.display_name as actor_name, p.avatar_url as actor_avatar,
+           null::uuid as work_id, null::text as work_title, null::text as body
+    from public.follows f
+    join public.profiles p on p.id = f.follower_id
+    where f.following_id = auth.uid()
+    union all
+    select 'love'::text, l.created_at,
+           p.username, p.display_name, p.avatar_url,
+           w.id, w.title, null::text
+    from public.loves l
+    join public.works w on w.id = l.work_id
+    join public.profiles p on p.id = l.user_id
+    where w.user_id = auth.uid() and l.user_id <> auth.uid()
+    union all
+    select 'comment'::text, c.created_at,
+           p.username, p.display_name, p.avatar_url,
+           w.id, w.title, c.body
+    from public.comments c
+    join public.works w on w.id = c.work_id
+    join public.profiles p on p.id = c.user_id
+    where w.user_id = auth.uid() and c.user_id <> auth.uid()
+  ) t
+  order by t.created_at desc
+  limit greatest(1, least(coalesce(p_limit, 30), 100));
+$fn$;
+-- 新建函数默认把 EXECUTE 给了 PUBLIC（anon 也能调），必须显式收回再只授登录用户
+revoke execute on function public.my_notices(int) from public, anon;
+grant execute on function public.my_notices(int) to authenticated;

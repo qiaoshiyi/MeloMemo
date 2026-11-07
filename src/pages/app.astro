@@ -42,8 +42,10 @@ const site = 'https://melomemo.cn';
       <div class="wrap">
         <a class="logo" href="../">🎶 MeloMemo</a>
         <a class="item" href="#/feed">社区动态</a>
+        <a class="item" href="#/discover">发现音乐人</a>
         <a class="item" href="#/publish">发布作品</a>
         <a class="item" href="#/me">我的主页</a>
+        <a class="item notify" id="noticesNavBtn" href="#/notices" hidden>🔔 通知<i class="dot" id="noticeDot" hidden></i></a>
         <a class="item join" id="authNavBtn" href="#/login">登录 / 注册</a>
         <button id="themeBtn" type="button" title="切换明暗主题" aria-label="切换明暗主题">🌙</button>
       </div>
@@ -218,6 +220,32 @@ const site = 'https://melomemo.cn';
         </div>
         <div class="grid" id="pfWorksList"></div>
         <p class="muted center" id="pfEmpty" hidden>这位音乐人还没发布作品。</p>
+      </section>
+
+      <!-- 发现音乐人（游客也能看） -->
+      <section id="discoverView" hidden>
+        <div class="sec-head">
+          <h2>🧭 发现音乐人</h2>
+          <p class="muted">按作品数和被关注数排的，点进去就能听。</p>
+        </div>
+        <div class="feed-tools">
+          <input id="peopleSearch" type="search" placeholder="🔍 搜索昵称或主页地址…" aria-label="搜索音乐人" />
+        </div>
+        <p class="feedstats" id="peopleStats"></p>
+        <div class="people" id="peopleList" aria-live="polite"></div>
+        <div class="pager" id="peopleMoreWrap" hidden>
+          <button id="peopleMore" class="btn ghost" type="button">加载更多</button>
+        </div>
+      </section>
+
+      <!-- 通知 -->
+      <section id="noticesView" hidden>
+        <div class="sec-head">
+          <h2>🔔 通知</h2>
+          <p class="muted">谁关注了你、喜欢了你的歌、在你的作品下留了言。</p>
+        </div>
+        <div class="notices" id="noticeList" aria-live="polite"></div>
+        <p class="muted center" id="noticeEmpty" hidden>还没有新动静，先去给别人点个赞吧 🎧</p>
       </section>
     </main>
 
@@ -410,6 +438,30 @@ const site = 'https://melomemo.cn';
       .frow .lab { color: var(--muted); flex: none; padding-top: 4px; }
       .chip { display: inline-block; padding: 3px 12px; border-radius: 999px; background: color-mix(in srgb, var(--accent-2) 14%, transparent); color: var(--accent-2); text-decoration: none; font-weight: 600; }
       footer.site a { color: var(--muted); }
+      /* 发现音乐人 */
+      .people { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-top: 14px; }
+      .person { display: flex; gap: 12px; align-items: center; text-decoration: none; color: inherit; padding: 14px; border-radius: 16px; border: 1px solid var(--card-border); background: var(--card); transition: border-color .18s ease, transform .18s ease; }
+      .person:hover { border-color: color-mix(in srgb, var(--accent-2) 55%, var(--card-border)); transform: translateY(-2px); }
+      .person .mini-avatar { flex: none; }
+      .person .p-info { min-width: 0; flex: 1; }
+      .person .p-name { display: block; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .person .p-handle { display: block; font-size: 13px; color: var(--muted); }
+      .person .p-bio { display: block; font-size: 12.5px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .person .p-nums { flex: none; text-align: right; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+      .person .p-nums b { color: var(--ink); font-size: 14px; }
+      /* 通知 */
+      .notices { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+      .notice { display: flex; gap: 12px; align-items: flex-start; padding: 13px 15px; border-radius: 14px; border: 1px solid var(--card-border); background: var(--card); text-decoration: none; color: inherit; transition: border-color .18s ease; }
+      .notice:hover { border-color: color-mix(in srgb, var(--accent-2) 50%, var(--card-border)); }
+      .notice .n-icon { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--accent-2) 16%, transparent); font-size: 16px; }
+      .notice .n-body { flex: 1; min-width: 0; font-size: 14px; line-height: 1.6; }
+      .notice .n-body strong { font-weight: 700; }
+      .notice .n-quote { display: block; margin-top: 4px; padding: 7px 10px; border-left: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); color: var(--muted); font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+      .notice .n-time { flex: none; font-size: 12px; color: var(--muted); }
+      nav .item.notify { position: relative; }
+      nav .item.notify .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-left: 4px; vertical-align: middle; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+      .sec-head { margin-bottom: 4px; }
+      .sec-head h2 { margin-bottom: 4px; }
       @media (max-width: 640px) {
         nav .wrap { flex-wrap: wrap; height: auto; row-gap: 2px; padding: 10px 16px 8px; }
         nav .logo { width: 100%; font-size: 17px; }
@@ -785,17 +837,21 @@ const site = 'https://melomemo.cn';
       // ---------- 视图路由： #/feed · #/publish · #/me · #/u/用户名 · #/login ----------
       const authView = $('authView'), resetView = $('resetView'), shell = $('shell'),
             feedView = $('feedView'), publishView = $('publishView'), meView = $('meView'),
-            profileView = $('profileView');
+            profileView = $('profileView'), discoverView = $('discoverView'), noticesView = $('noticesView');
 
       function showViews(v) {
         authView.hidden = !v.auth;
         if (v.auth) loadCaptcha();
         resetView.hidden = !v.reset;
         shell.hidden = !v.shell;
-        profileView.hidden = !v.profile;
-        feedView.hidden = true;
-        publishView.hidden = true;
-        meView.hidden = true;
+        // shell 隐藏时（如登录 / 找回密码界面）连带收掉所有子视图，避免留下残影
+        const inShell = !!v.shell;
+        profileView.hidden = !inShell || !v.profile;
+        discoverView.hidden = !inShell || !v.discover;
+        noticesView.hidden = !inShell || !v.notices;
+        feedView.hidden = !inShell;
+        publishView.hidden = !inShell;
+        meView.hidden = !inShell;
         document.querySelectorAll('.tabs3 button').forEach(b => b.classList.remove('on'));
       }
       const tabStyle = name => {
@@ -806,6 +862,8 @@ const site = 'https://melomemo.cn';
         const btn = $('authNavBtn');
         if (user) { btn.textContent = '👤 ' + (myProfile?.display_name || myProfile?.username || '我'); btn.href = '#/me'; }
         else { btn.textContent = '登录 / 注册'; btn.href = '#/login'; }
+        const nb = $('noticesNavBtn');
+        if (nb) nb.hidden = !user;
       }
 
       async function route() {
@@ -827,6 +885,21 @@ const site = 'https://melomemo.cn';
 
         if (view === 'login') { if (user) { location.hash = '#/me'; return; } showViews({ auth: true }); return; }
         if (view === 'reset') { showViews({ reset: true }); return; }
+        if (view === 'discover') {
+          showViews({ shell: true, discover: true });
+          $('guestBar').hidden = true;
+          document.querySelector('.whoami').hidden = !user;
+          await loadPeople(true);
+          return;
+        }
+        if (view === 'notices') {
+          if (!user) { showViews({ auth: true }); return; }
+          showViews({ shell: true, notices: true });
+          $('guestBar').hidden = true;
+          document.querySelector('.whoami').hidden = false;
+          await loadNotices();
+          return;
+        }
         if (view === 'feed' || view === '') {
           showViews({ shell: true });
           tabStyle('feed');
@@ -840,7 +913,7 @@ const site = 'https://melomemo.cn';
         showViews({ shell: true });
         if (view === 'publish') { tabStyle('publish'); publishView.hidden = false; await loadMine(); }
         else if (view === 'me') { tabStyle('me'); meView.hidden = false; await loadLoves(); }
-        else { tabStyle('feed'); feedView.hidden = false; await loadFeed(); }
+        else { tabStyle('feed'); feedView.hidden = false; await loadFeed(true); }
       }
       addEventListener('hashchange', route);
 
@@ -973,7 +1046,7 @@ const site = 'https://melomemo.cn';
       async function loadProfile(username) {
         const { data: pf, error } = await sb.from('profiles').select('*').eq('username', username).maybeSingle();
         if (!pf || error) {
-          showViews({ profile: true });
+          showViews({ shell: true, profile: true });
           $('pfNotFound').hidden = false;
           $('pfCard').hidden = true;
           $('pfWorksList').innerHTML = '';
@@ -1032,7 +1105,7 @@ const site = 'https://melomemo.cn';
         };
 
         const { data: works } = await sb.from('works').select('*, profiles!works_user_id_fkey(username, display_name), loves(count), comments(count)').eq('user_id', pf.id).order('created_at', { ascending: false });
-        showViews({ profile: true });
+        showViews({ shell: true, profile: true });
         document.querySelectorAll('.tabs3 button').forEach(b => b.classList.remove('on'));
         renderWorkList($('pfWorksList'), works, {});
         $('pfEmpty').hidden = !!(works && works.length);
@@ -1124,6 +1197,95 @@ const site = 'https://melomemo.cn';
         parts.push(`${count ?? rows.length} 首作品`);
         if (feedState.sort === 'hot') parts.unshift('🔥 按播放量');
         $('feedStats').textContent = '🎧 ' + parts.join(' · ');
+      }
+
+      // ---------- 发现音乐人 ----------
+      const PPL = 12;
+      const peopleState = { q: '', page: 0, done: false };
+      async function loadPeople(reset) {
+        if (!sb) return;
+        const list = $('peopleList');
+        if (reset) {
+          peopleState.page = 0; peopleState.done = false;
+          list.innerHTML = Array.from({ length: 4 }).map(() => '<div class="card skel" aria-hidden="true"><div class="sk-line w60"></div><div class="sk-line w40"></div><div class="sk-line w80"></div></div>').join('');
+        }
+        const { data, error } = await sb.rpc('discover_people', {
+          p_q: peopleState.q, p_limit: PPL, p_offset: peopleState.page * PPL
+        });
+        if (error) { list.innerHTML = '<div class="empty">加载失败，请刷新再试</div>'; $('peopleMoreWrap').hidden = true; return; }
+        if (reset) list.innerHTML = '';
+        const rows = data || [];
+        rows.forEach(p => {
+          const a = document.createElement('a');
+          a.className = 'person';
+          a.href = '#/u/' + p.username;
+          a.innerHTML = `<div class="mini-avatar">${esc((p.display_name || p.username || '?').slice(0, 1))}</div>
+            <div class="p-info"><span class="p-name">${esc(p.display_name || p.username)}</span><span class="p-handle">@${esc(p.username)}</span>${p.bio ? `<span class="p-bio">${esc(p.bio)}</span>` : ''}</div>
+            <div class="p-nums"><b>${p.works_count ?? 0}</b> 作品<br><b>${p.followers_count ?? 0}</b> 粉丝</div>`;
+          setAvatar(a.querySelector('.mini-avatar'), p.avatar_url, p.display_name || p.username);
+          list.appendChild(a);
+        });
+        if (reset && rows.length === 0) {
+          list.innerHTML = peopleState.q
+            ? `<div class="empty">没找到叫「${esc(peopleState.q)}」的音乐人 🎐</div>`
+            : '<div class="empty">社区刚开张，还没有音乐人入驻 🎤<br><a href="#/publish">发一首歌当第一个</a></div>';
+        }
+        const total = rows.length ? Number(rows[0].total ?? 0) : 0;
+        peopleState.done = rows.length < PPL || (peopleState.page + 1) * PPL >= total;
+        $('peopleMoreWrap').hidden = peopleState.done;
+        $('peopleStats').textContent = rows.length ? `🧭 共 ${total} 位音乐人` : '';
+      }
+
+      // ---------- 通知 ----------
+      const seenKey = 'mm-notices-seen';
+      const seenAt = () => { try { return localStorage.getItem(seenKey) || ''; } catch (e) { return ''; } };
+      function noticeText(n) {
+        const who = `<a href="#/u/${esc(n.actor_username)}">${esc(n.actor_name || n.actor_username)}</a>`;
+        const work = n.work_title ? `<strong>《${esc(n.work_title)}》</strong>` : '';
+        if (n.kind === 'follow') return `${who} 关注了你`;
+        if (n.kind === 'love') return `${who} 喜欢了你的 ${work}`;
+        return `${who} 评论了你的 ${work}${n.body ? `<span class="n-quote">${esc(n.body)}</span>` : ''}`;
+      }
+      const noticeIcon = k => k === 'follow' ? '👋' : (k === 'love' ? '♥' : '💬');
+      async function loadNotices() {
+        if (!sb || !user) return;
+        const list = $('noticeList');
+        list.innerHTML = '<div class="card skel" aria-hidden="true"><div class="sk-line w60"></div><div class="sk-line w80"></div></div>';
+        const { data, error } = await sb.rpc('my_notices', { p_limit: 40 });
+        if (error) { list.innerHTML = '<div class="empty">通知加载失败，请刷新再试</div>'; return; }
+        const rows = data || [];
+        list.innerHTML = '';
+        rows.forEach(n => {
+          const el = document.createElement('div');
+          el.className = 'notice';
+          const href = n.kind === 'follow' ? '#/u/' + n.actor_username : (n.work_id ? '#/feed' : '#/feed');
+          el.innerHTML = `<span class="n-icon" aria-hidden="true">${noticeIcon(n.kind)}</span>
+            <div class="n-body">${noticeText(n)}</div>
+            <span class="n-time">${timeAgo(n.created_at)}</span>`;
+          if (n.work_id) { el.style.cursor = 'pointer'; el.addEventListener('click', e => { if (e.target.closest('a')) return; location.hash = '#/feed'; }); }
+          list.appendChild(el);
+        });
+        $('noticeEmpty').hidden = rows.length > 0;
+        // 打开通知页即视为已读
+        try { localStorage.setItem(seenKey, rows[0]?.created_at || new Date().toISOString()); } catch (e) {}
+        $('noticeDot').hidden = true;
+      }
+      function timeAgo(iso) {
+        const t = new Date(iso).getTime();
+        if (!t) return '';
+        const d = Math.floor((Date.now() - t) / 1000);
+        if (d < 60) return '刚刚';
+        if (d < 3600) return Math.floor(d / 60) + ' 分钟前';
+        if (d < 86400) return Math.floor(d / 3600) + ' 小时前';
+        if (d < 86400 * 30) return Math.floor(d / 86400) + ' 天前';
+        return new Date(t).toLocaleDateString('zh-CN');
+      }
+      // 未读红点：只取最新一条，和本地记录的已读时间比
+      async function refreshNoticeDot() {
+        if (!sb || !user) return;
+        const { data } = await sb.rpc('my_notices', { p_limit: 1 });
+        const newest = data?.[0]?.created_at || '';
+        $('noticeDot').hidden = !newest || newest <= seenAt();
       }
 
       // ---------- 我的作品 ----------
@@ -1317,6 +1479,19 @@ const site = 'https://melomemo.cn';
       });
 
       // ---------- 启动 ----------
+      // 发现音乐人：搜索（防抖）+ 加载更多
+      let peopleTimer = null;
+      $('peopleSearch').addEventListener('input', e => {
+        clearTimeout(peopleTimer);
+        const v = e.target.value.trim();
+        peopleTimer = setTimeout(() => {
+          peopleState.q = v.replace(/[%_\\]/g, '').slice(0, 40);
+          loadPeople(true);
+        }, 280);
+      });
+      $('peopleMore').addEventListener('click', () => { peopleState.page++; loadPeople(false); });
+      $('noticesNavBtn').addEventListener('click', () => { $('noticeDot').hidden = true; });
+
       (async function boot() {
         if (!sb) { showViews({ shell: true }); feedView.hidden = false; return; }
         const { data } = await sb.auth.getUser();
@@ -1330,6 +1505,7 @@ const site = 'https://melomemo.cn';
           (lv || []).forEach(x => lovedSet.add(x.work_id));
         }
         syncAuthNav();
+        refreshNoticeDot();
         sb.auth.onAuthStateChange((event, session) => {
           // 只处理真正改变登录态的事件，令牌刷新不重载页面
           if (event === 'PASSWORD_RECOVERY') { showViews({ reset: true }); location.hash = '#/reset'; return; }
