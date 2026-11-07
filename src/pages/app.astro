@@ -88,6 +88,10 @@ import '../styles/global.css';
             <label>一句话说明（可选）<input id="songNote" maxlength="200" placeholder="翻唱 · 吉他自弹 · 2026" /></label>
             <label>音频文件 <input id="songFile" type="file" accept="audio/*" /></label>
             <button id="publishBtn" class="btn primary">🚀 发布</button>
+            <div id="upWrap" class="upwrap">
+              <div class="upbar"><i id="upFill"></i></div>
+              <div id="upText" class="uptext"></div>
+            </div>
             <p id="publishMsg" class="msg"></p>
           </div>
           <h3 class="sub">我发布过的 <span id="myCount" class="muted"></span></h3>
@@ -203,6 +207,11 @@ import '../styles/global.css';
       .sortseg { display: flex; gap: 4px; }
       .smini { padding: 9px 16px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--muted); cursor: pointer; font-size: 14px; }
       .smini.on { background: var(--gradient); color: #fff; border-color: transparent; font-weight: 700; }
+      .upwrap { display: none; flex-direction: column; gap: 6px; }
+      .upwrap.show { display: flex; }
+      .upbar { height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--card-border) 60%, transparent); overflow: hidden; }
+      .upbar i { display: block; height: 100%; width: 0%; border-radius: inherit; background: var(--gradient); transition: width .25s ease; }
+      .uptext { font-size: 13px; color: var(--muted); text-align: center; }
       .frows { width: 100%; font-size: 13.5px; }
       .frow { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; flex-wrap: wrap; }
       .frow .lab { color: var(--muted); flex: none; padding-top: 4px; }
@@ -499,7 +508,22 @@ import '../styles/global.css';
         renderWorkList($('mineList'), works || [], { ownerView: true });
       }
 
-      // ---------- 发布 ----------
+      // ---------- 发布（真实进度直传：百分比 / 已传大小 / 速度 / 预计剩余） ----------
+      function uploadWithProgress(path, file, token, onTick) {
+        const url = cfg.url + '/storage/v1/object/songs/' + path.split('/').map(encodeURIComponent).join('/');
+        return new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', url);
+          xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+          xhr.setRequestHeader('apikey', cfg.anonKey);
+          xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+          xhr.upload.onprogress = e => { if (e.lengthComputable) onTick(e.loaded, e.total); };
+          xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? resolve() : reject(new Error('HTTP ' + xhr.status + ' ' + (xhr.responseText || '').slice(0, 120)));
+          xhr.onerror = () => reject(new Error('网络中断'));
+          xhr.ontimeout = () => reject(new Error('上传超时'));
+          xhr.send(file);
+        });
+      }
       $('publishBtn').addEventListener('click', async () => {
         if (!sb || !user) return;
         const title = $('songTitle').value.trim();
@@ -508,18 +532,51 @@ import '../styles/global.css';
         msg($('publishMsg'), '');
         if (!title || !file) { msg($('publishMsg'), '歌曲标题和音频文件都要有哦', true); return; }
         if (file.size > 50 * 1024 * 1024) { msg($('publishMsg'), '文件请小于 50MB', true); return; }
-        msg($('publishMsg'), '上传中，请稍等…');
         const path = `${user.id}/${Date.now()}-${file.name.replace(/[^\w.\-]/g, '_')}`;
+        const fmtMB = x => (x / 1048576).toFixed(1);
+        let t0 = performance.now(), lastLoaded = 0, lastT = 0, hinted = false;
+        const tick = (loaded, total) => {
+          const now = performance.now();
+          const pct = Math.min(100, Math.round(loaded / total * 100));
+          $('upFill').style.width = pct + '%';
+          let line = `已上传 ${fmtMB(loaded)} / ${fmtMB(total)} MB（${pct}%）`;
+          if (lastLoaded && now - lastT >= 300) {
+            const speed = (loaded - lastLoaded) / ((now - lastT) / 1000);
+            if (speed > 0) {
+              const sp = speed < 1048576 ? Math.max(1, Math.round(speed / 1024)) + ' KB/s' : (speed / 1048576).toFixed(1) + ' MB/s';
+              line += ` · ${sp} · 剩余约 ${Math.max(1, Math.round((total - loaded) / speed))} 秒`;
+            }
+            lastLoaded = loaded; lastT = now;
+          } else if (!lastLoaded) { lastLoaded = loaded; lastT = now; }
+          if (!hinted && now - t0 > 20000) { hinted = true; line += '<span style="opacity:.8"> · 线路跨洋稍慢，上传仍在稳定进行，别关页面</span>'; }
+          $('upText').innerHTML = line;
+        };
+        $('publishBtn').disabled = true;
+        $('upWrap').classList.add('show');
         try {
-          const up = await sb.storage.from('songs').upload(path, file);
-          if (up.error) throw up.error;
+          const { data: { session } } = await sb.auth.getSession();
+          if (!session) throw new Error('登录状态过期，请刷新页面重新登录');
+          let ok = false, lastErr = null;
+          for (let i = 0; i < 2 && !ok; i++) {
+            try { await uploadWithProgress(path, file, session.access_token, tick); ok = true; }
+            catch (e) {
+              if (i === 0) { $('upFill').style.width = '0%'; msg($('publishMsg'), '⇄ 上传中断，正在自动重试…'); t0 = performance.now(); lastLoaded = 0; lastT = 0; }
+              else lastErr = e;
+            }
+          }
+          if (!ok) throw (lastErr || new Error('上传失败'));
           const ins = await sb.from('works').insert({ user_id: user.id, title, note, storage_path: path });
           if (ins.error) throw ins.error;
+          $('upFill').style.width = '100%';
+          $('upText').textContent = '✅ 上传完成，正在发布…';
           msg($('publishMsg'), '🎉 发布成功！已跳转到社区动态');
           $('songTitle').value = ''; $('songNote').value = ''; $('songFile').value = '';
           location.hash = '#/feed';
         } catch (e) {
           msg($('publishMsg'), '发布失败：' + (e.message || '未知错误'), true);
+        } finally {
+          $('publishBtn').disabled = false;
+          setTimeout(() => { $('upWrap').classList.remove('show'); $('upFill').style.width = '0%'; }, 1800);
         }
       });
 
