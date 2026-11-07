@@ -101,6 +101,11 @@ import '../styles/global.css';
         <!-- 我的主页（编辑资料） -->
         <div id="meView" hidden>
           <div class="card form-card">
+            <div class="av-edit">
+              <button id="avatarBtn" class="mini-avatar big" title="点击更换头像">🎵</button>
+              <span class="muted">点头像换新图<br />PNG/JPG · ≤3MB · 方形最佳</span>
+              <input id="avatarFile" type="file" accept="image/*" hidden />
+            </div>
             <label>昵称 <input id="pfName" maxlength="24" /></label>
             <label>个人简介 <input id="pfBio" maxlength="80" placeholder="一句话介绍你的音乐" /></label>
             <label>主页地址（字母/数字/下划线）<input id="pfUsername" maxlength="24" /></label>
@@ -139,7 +144,7 @@ import '../styles/global.css';
 
     <div id="mini" hidden>
       <div class="mini-cover" id="miniCover">🎤</div>
-      <div class="mini-info"><strong id="miniTitle"></strong><div class="mini-bar"><i id="miniFill"></i></div></div>
+      <div class="mini-info"><strong id="miniTitle"></strong><span id="miniAuthor" class="mini-author"></span><div class="mini-bar"><i id="miniFill"></i></div></div>
       <button id="miniToggle" title="播放/暂停">⏸</button>
       <button id="miniClose" title="关闭">✕</button>
     </div>
@@ -182,6 +187,10 @@ import '../styles/global.css';
         background: var(--gradient);
       }
       .mini-avatar.big { width: 74px; height: 74px; font-size: 34px; }
+      .av-edit { display: flex; align-items: center; gap: 14px; }
+      #avatarBtn { cursor: pointer; border: none; padding: 0; background-size: cover; background-position: center; }
+      #avatarBtn:hover { filter: brightness(1.12); }
+      .mini-author { font-size: 12.5px; color: var(--muted); }
       .profile-card { flex-direction: row; align-items: center; gap: 16px; max-width: 640px; margin: 0 auto 22px; flex-wrap: wrap; }
       .pf-head { flex: 1; min-width: 200px; }
       .pf-head h2 { margin: 0 0 2px; font-size: 22px; }
@@ -252,6 +261,12 @@ import '../styles/global.css';
       let viewingUsername = '';
       const followingSet = new Set();
 
+      // ---------- 头像通用显示 ----------
+      function setAvatar(el, url, name) {
+        if (url) { el.style.backgroundImage = `url(${esc(url)})`; el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center'; el.textContent = ''; }
+        else { el.style.backgroundImage = ''; el.textContent = initials(name); }
+      }
+
       // ---------- 关注名单展示（关注中 / 粉丝，点名字直达主页） ----------
       async function renderFollowRows(followingIds, fanIds) {
         const rows = $('pfFollowRows'); if (!rows) return;
@@ -272,17 +287,18 @@ import '../styles/global.css';
 
       // ---------- 迷你播放条（与首页同款） ----------
       const mini = $('mini'), miniTitle = $('miniTitle'), miniCover = $('miniCover'),
-            miniFill = $('miniFill'), miniToggle = $('miniToggle'), miniClose = $('miniClose');
+            miniAuthor = $('miniAuthor'), miniFill = $('miniFill'), miniToggle = $('miniToggle'), miniClose = $('miniClose');
       let currentAudio = null;
       miniToggle.addEventListener('click', () => { if (currentAudio) currentAudio.paused ? currentAudio.play() : currentAudio.pause(); });
       miniClose.addEventListener('click', () => { if (currentAudio) currentAudio.pause(); mini.hidden = true; });
 
-      function wirePlay(card, audio, title, coverUrl) {
+      function wirePlay(card, audio, title, coverUrl, author) {
         audio.addEventListener('play', () => {
           document.querySelectorAll('audio').forEach(a => { if (a !== audio) a.pause(); });
           currentAudio = audio;
           mini.hidden = false;
           miniTitle.textContent = title;
+          miniAuthor.textContent = author ? '🎤 ' + author : '';
           if (coverUrl) { miniCover.style.backgroundImage = `url(${coverUrl})`; miniCover.textContent = ''; }
           else { miniCover.style.backgroundImage = ''; miniCover.textContent = '🎤'; }
           miniCover.classList.add('spin');
@@ -320,7 +336,9 @@ import '../styles/global.css';
           <span class="note">▶ ${w.plays || 0} 次播放</span>
           <audio controls preload="none" src="${esc(audioUrl)}" data-work-id="${w.id}"></audio>
         `;
-        wirePlay(div, div.querySelector('audio'), w.title, w.works_cover || null);
+        wirePlay(div, div.querySelector('audio'), w.title, w.works_cover || null,
+          (w.profiles && (w.profiles.display_name || w.profiles.username)) ||
+          (user && w.user_id === user.id && myProfile ? (myProfile.display_name || myProfile.username) : ''));
         const del = div.querySelector('.del');
         if (del) del.addEventListener('click', async () => {
           if (!sb || !confirm(`确定删除《${w.title}》吗？`)) return;
@@ -419,7 +437,8 @@ import '../styles/global.css';
         myProfile = profile;
         $('mineName').textContent = profile.display_name || profile.username;
         $('mineHandle').textContent = '@' + profile.username;
-        $('mineAvatar').textContent = initials(profile.display_name || profile.username);
+        setAvatar($('mineAvatar'), profile.avatar_url, profile.display_name || profile.username);
+        setAvatar($('avatarBtn'), profile.avatar_url, profile.display_name || profile.username);
         $('pfName').value = profile.display_name || '';
         $('pfBio').value = profile.bio || '';
         $('pfUsername').value = profile.username || '';
@@ -447,7 +466,7 @@ import '../styles/global.css';
         viewingUsername = pf.username;
         $('pfHandle').textContent = '@' + pf.username;
         $('pfBio').textContent = pf.bio || '这位音乐人还没写简介。';
-        $('pfAvatar').textContent = initials(pf.display_name || pf.username);
+        setAvatar($('pfAvatar'), pf.avatar_url, pf.display_name || pf.username);
         renderFollowRows(followingData.data.map(x => x.following_id), followsData.data.map(x => x.follower_id));        $('pfWorks').textContent = worksN ?? 0;
         $('pfFollowers').textContent = followers ?? 0;
         $('pfFollowing').textContent = followingN ?? 0;
@@ -596,6 +615,51 @@ import '../styles/global.css';
         myProfile = { ...myProfile, username, display_name, bio };
         setShell(myProfile);
         msg($('profileMsg'), '✅ 已保存，你的新主页地址已生效');
+      });
+
+      // ---------- 头像更换 ----------
+      $('avatarBtn').addEventListener('click', () => $('avatarFile').click());
+      $('avatarFile').addEventListener('change', async () => {
+        if (!sb || !user) return;
+        const file = $('avatarFile').files[0];
+        $('avatarFile').value = '';
+        if (!file) return;
+        if (!/^image\//.test(file.type)) { msg($('profileMsg'), '请选择图片文件（PNG/JPG/WEBP）', true); return; }
+        if (file.size > 3 * 1024 * 1024) { msg($('profileMsg'), '头像图片请小于 3MB', true); return; }
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) { msg($('profileMsg'), '登录状态过期，请刷新页面', true); return; }
+        const ext = (file.name.match(/\.(png|jpe?g|gif|webp)$/i) || [null, 'png'])[1];
+        const path = `avatars/${user.id}/${Date.now()}.${ext}`;
+        msg($('profileMsg'), '头像上传中…');
+        $('avatarBtn').disabled = true;
+        try {
+          await new Promise((res, rej) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', cfg.url + '/storage/v1/object/songs/' + path.split('/').map(encodeURIComponent).join('/'));
+            xhr.setRequestHeader('Authorization', 'Bearer ' + session.access_token);
+            xhr.setRequestHeader('apikey', cfg.anonKey);
+            xhr.setRequestHeader('Content-Type', file.type || 'image/png');
+            xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? res() : rej(new Error('HTTP ' + xhr.status));
+            xhr.onerror = () => rej(new Error('网络中断'));
+            xhr.send(file);
+          });
+          const url = sb.storage.from('songs').getPublicUrl(path).data.publicUrl;
+          const prev = myProfile && myProfile.avatar_url;
+          if (prev && prev.includes('/object/public/songs/avatars/')) {
+            const oldPath = decodeURIComponent(prev.split('/object/public/songs/')[1] || '');
+            if (oldPath && oldPath !== path) { try { await sb.storage.from('songs').remove([oldPath]); } catch (e) {} }
+          }
+          const { error } = await sb.from('profiles').update({ avatar_url: url }).eq('id', user.id);
+          if (error) throw error;
+          myProfile = { ...myProfile, avatar_url: url };
+          setAvatar($('mineAvatar'), url, myProfile.display_name || myProfile.username);
+          setAvatar($('avatarBtn'), url, myProfile.display_name || myProfile.username);
+          msg($('profileMsg'), '✅ 头像已更新');
+        } catch (e) {
+          msg($('profileMsg'), '头像上传失败：' + (e.message || '未知错误'), true);
+        } finally {
+          $('avatarBtn').disabled = false;
+        }
       });
 
       // ---------- 启动 ----------
