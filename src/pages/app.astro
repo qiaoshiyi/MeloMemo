@@ -339,6 +339,7 @@ const site = 'https://melomemo.cn';
       }
       .card-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
       .feedstats { color: var(--muted); font-size: 13px; margin: -6px 0 14px; }
+      .dur { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--card-border); }
       .skel { pointer-events: none; }
       .sk-cover { height: 120px; border-radius: 14px; background: color-mix(in srgb, var(--card-border) 55%, transparent); }
       .sk-line { height: 12px; border-radius: 8px; background: color-mix(in srgb, var(--card-border) 55%, transparent); }
@@ -561,6 +562,7 @@ const site = 'https://melomemo.cn';
           ${!opts.ownerView ? `<div class="byline">由 <a href="#/u/${esc(who.username || '')}">${esc(who.display_name || who.username || '神秘音乐人')}</a>${opts.mutual ? '<span class="mutual">互相关注</span>' : ''}</div>` : ''}
           <div class="card-foot">
             ${w.genre ? `<span class="work-genre">${esc(w.genre)}</span>` : ''}
+            ${Number(w.duration) > 0 ? `<span class="dur">${fmtT(w.duration)}</span>` : ''}
             <span class="note" style="margin:0;">▶ ${Number(w.plays || 0)} 次播放</span>
             <button class="love${lovedSet.has(w.id) ? ' on' : ''}" type="button" data-love="${esc(w.id)}" aria-pressed="${lovedSet.has(w.id)}" aria-label="喜欢《${esc(w.title)}》">♥ <span>${lovedSet.has(w.id) ? '已喜欢' : '喜欢'}</span>${lc ? ` <b>${lc}</b>` : ''}</button>
           </div>
@@ -925,7 +927,7 @@ const site = 'https://melomemo.cn';
       async function loadLoves() {
         if (!sb || !user) return;
         const { data } = await sb.from('loves')
-          .select('work_id, created_at, works(id, title, note, genre, plays, storage_path, user_id, profiles!works_user_id_fkey(username, display_name), loves(count))')
+          .select('work_id, created_at, works(id, title, note, genre, plays, duration, storage_path, user_id, profiles!works_user_id_fkey(username, display_name), loves(count))')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
         const works = (data || []).map(x => x.works).filter(Boolean);
@@ -936,6 +938,19 @@ const site = 'https://melomemo.cn';
 
       // ---------- 发布（真实进度直传：百分比 / 已传大小 / 速度 / 预计剩余） ----------
       const MAX_BYTES = 50 * 1024 * 1024;
+      // 上传前先在本地读一下音频时长，存进 works.duration（读不出来就当 0，不影响发布）
+      function probeDuration(file) {
+        return new Promise(resolve => {
+          const url = URL.createObjectURL(file);
+          const a = new Audio();
+          const done = v => { try { URL.revokeObjectURL(url); } catch (e) {} resolve(v); };
+          const timer = setTimeout(() => done(0), 6000);
+          a.preload = 'metadata';
+          a.onloadedmetadata = () => { clearTimeout(timer); done(Number.isFinite(a.duration) ? Math.round(a.duration) : 0); };
+          a.onerror = () => { clearTimeout(timer); done(0); };
+          a.src = url;
+        });
+      }
       function uploadWithProgress(path, file, token, onTick) {
         const url = cfg.url + '/storage/v1/object/songs/' + encPath(path);
         return new Promise((resolve, reject) => {
@@ -965,6 +980,7 @@ const site = 'https://melomemo.cn';
           msg($('publishMsg'), '请选择音频文件（MP3 / M4A / WAV / OGG）', 'err'); return;
         }
         if (file.size > MAX_BYTES) { msg($('publishMsg'), '文件请小于 50MB', 'err'); return; }
+        const duration = await probeDuration(file);
         const safeName = file.name.replace(/[^\w.\-]/g, '_').slice(-60);
         const path = `${user.id}/${Date.now()}-${safeName}`;
         const fmtMB = x => (x / 1048576).toFixed(1);
@@ -999,7 +1015,7 @@ const site = 'https://melomemo.cn';
             }
           }
           if (!ok) throw (lastErr || new Error('上传失败'));
-          const ins = await sb.from('works').insert({ user_id: user.id, title, note, storage_path: path, genre });
+          const ins = await sb.from('works').insert({ user_id: user.id, title, note, storage_path: path, genre, duration });
           if (ins.error) {
             // 元数据写入失败：清掉刚上传的音频，避免留下孤儿文件
             try { await sb.storage.from('songs').remove([path]); } catch (e) {}
