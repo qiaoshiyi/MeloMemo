@@ -143,7 +143,7 @@ import '../styles/global.css';
     <footer class="site"><div class="wrap">© 2026 MeloMemo · 音乐是交朋友最快的路</div></footer>
 
     <div id="mini" hidden>
-      <div class="mini-cover" id="miniCover">🎤</div>
+      <div class="mini-cover" id="miniCover"><i class="disc-label" id="miniCoverLabel">🎤</i></div>
       <div class="mini-info"><strong id="miniTitle"></strong><span id="miniAuthor" class="mini-author"></span><div class="mini-timerow"><div class="mini-bar"><i id="miniFill"></i></div><span id="miniTime" class="mini-time">0:00 / 0:00</span></div></div>
       <button id="miniToggle" title="播放/暂停">⏸</button>
       <button id="miniClose" title="关闭">✕</button>
@@ -291,7 +291,7 @@ import '../styles/global.css';
       // ---------- 迷你播放条（与首页同款） ----------
       const mini = $('mini'), miniTitle = $('miniTitle'), miniCover = $('miniCover'),
             miniAuthor = $('miniAuthor'), miniFill = $('miniFill'), miniToggle = $('miniToggle'), miniClose = $('miniClose'),
-            miniTime = $('miniTime');
+            miniTime = $('miniTime'), miniCoverLabel = $('miniCoverLabel');
       const fmtT = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
       let currentAudio = null;
       miniToggle.addEventListener('click', () => { if (currentAudio) currentAudio.paused ? currentAudio.play() : currentAudio.pause(); });
@@ -305,8 +305,8 @@ import '../styles/global.css';
           miniTitle.textContent = title;
           miniAuthor.textContent = author ? '🎤 ' + author : '';
           miniTime.textContent = '0:00 / ' + fmtT(audio.duration);
-          if (coverUrl) { miniCover.style.backgroundImage = `url(${coverUrl})`; miniCover.textContent = ''; }
-          else { miniCover.style.backgroundImage = ''; miniCover.textContent = '🎤'; }
+          if (coverUrl) { miniCoverLabel.style.backgroundImage = `url(${coverUrl})`; miniCoverLabel.textContent = ''; }
+          else { miniCoverLabel.style.backgroundImage = ''; miniCoverLabel.textContent = '🎤'; }
           miniCover.classList.add('spin');
           miniToggle.textContent = '⏸';
           card.classList.add('playing');

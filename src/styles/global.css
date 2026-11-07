@@ -236,10 +236,25 @@ footer.site { padding: 34px 0 44px; text-align: center; color: var(--muted); fon
 }
 @keyframes rise { from { transform: translate(-50%, 14px); opacity: 0; } }
 .mini-cover {
-  width: 44px; height: 44px; border-radius: 12px; flex: none;
-  display: flex; align-items: center; justify-content: center; font-size: 22px;
+  width: 44px; height: 44px; border-radius: 50%; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  /* 黑胶唱片盘面：深色基底 + 同心唱纹 */
+  background:
+    repeating-radial-gradient(circle at 50% 50%, #15161b 0 1.5px, #1e2027 1.5px 3px);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.07), 0 2px 8px rgba(0,0,0,.35);
+}
+.mini-cover .disc-label {
+  position: relative; width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-style: normal; color: #fff;
   background: linear-gradient(135deg, #2b3a67, #6c8cff 55%, #ff5e7a);
-  background-size: cover; background-position: center; color: #fff;
+  background-size: cover; background-position: center;
+  box-shadow: 0 0 0 2px rgba(10,11,15,.6);
+}
+.mini-cover .disc-label::after {
+  content: ''; width: 4px; height: 4px; border-radius: 50%;
+  background: #0a0b0f; position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%); box-shadow: 0 0 0 1px rgba(255,255,255,.15);
 }
 .mini-cover.spin { animation: spin 3.2s linear infinite; }
 .mini-info { flex: 1; min-width: 0; }
