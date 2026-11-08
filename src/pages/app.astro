@@ -25,6 +25,9 @@ const site = 'https://melomemo.cn';
     <meta property="og:description" content="听大家的翻唱与原创，关注喜欢的声音，上传你自己的作品。" />
     <meta property="og:image" content={`${site}/og-image.png`} />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="preconnect" href="https://js.hcaptcha.com" crossorigin />
+    <link rel="preconnect" href="https://newassets.hcaptcha.com" crossorigin />
+    <link rel="dns-prefetch" href="https://api.hcaptcha.com" />
     <link rel="dns-prefetch" href="https://mhfhbuivdwmdhqikjryu.supabase.co" />
     <script is:inline src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
     <script is:inline src="../config.js"></script>
@@ -537,6 +540,7 @@ const site = 'https://melomemo.cn';
         const box = $('captchaBox');
         if (!box) return;
         box.hidden = false;
+        box.innerHTML = '';   // 清掉「正在加载」占位，避免和控件叠在一起
         try {
           captchaWidget = window.hcaptcha.render(box, {
             sitekey: CAPTCHA_KEY,
@@ -552,15 +556,21 @@ const site = 'https://melomemo.cn';
         if (window.hcaptcha) { renderCaptcha(); return; }
         if (captchaLoading) return;
         captchaLoading = true;
+        const box = $('captchaBox');
+        if (box) { box.hidden = false; box.innerHTML = '<p class="msg">正在加载人机验证…</p>'; }
         const s = document.createElement('script');
         s.src = 'https://js.hcaptcha.com/1/api.js?render=explicit&hl=zh';
         s.async = true; s.defer = true;
-        s.onload = () => { captchaLoading = false; renderCaptcha(); };
-        s.onerror = () => {
+        let done = false;
+        const finish = (ok) => {
+          if (done) return; done = true;
           captchaLoading = false;
-          const box = $('captchaBox');
-          if (box) { box.hidden = false; box.innerHTML = '<p class="msg err">人机验证加载失败，检查网络后刷新页面重试</p>'; }
+          if (ok) renderCaptcha();
+          else if (box) box.innerHTML = '<p class="msg err">人机验证加载失败，检查网络后刷新页面重试</p>';
         };
+        s.onload = () => finish(true);
+        s.onerror = () => finish(false);
+        setTimeout(() => finish(false), 12000);   // 弱网超时，不让按钮永远卡住
         document.head.appendChild(s);
       }
       function resetCaptcha() {

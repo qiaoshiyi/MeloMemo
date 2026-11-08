@@ -15,5 +15,5 @@ window.MELO_CONFIG = {
   url: "https://mhfhbuivdwmdhqikjryu.supabase.co",
   anonKey: "sb_publishable_DpQ1DR4l-JPXqqmAi4Hcvw_ZHvnvK8K",
   captchaSiteKey: "baf69136-808c-451e-a16e-3594a5b6af7e",
-  captchaEnabled: false,
+  captchaEnabled: true,
 };
